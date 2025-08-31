@@ -1,0 +1,186 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* Modern gradient backgrounds */
+    --background: 240 10% 98%;
+    --background-gradient: linear-gradient(135deg, hsl(240 10% 98%), hsl(260 15% 96%));
+    --foreground: 240 10% 12%;
+
+    /* Card system with subtle elevation */
+    --card: 0 0% 100%;
+    --card-hover: 240 20% 99%;
+    --card-foreground: 240 10% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 15%;
+
+    /* Modern purple-blue primary */
+    --primary: 250 75% 60%;
+    --primary-glow: 250 85% 70%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Soft secondary tones */
+    --secondary: 240 20% 95%;
+    --secondary-hover: 240 25% 92%;
+    --secondary-foreground: 240 15% 25%;
+
+    --muted: 240 15% 94%;
+    --muted-hover: 240 20% 90%;
+    --muted-foreground: 240 10% 45%;
+
+    /* Accent colors for highlights */
+    --accent: 280 60% 65%;
+    --accent-glow: 280 70% 75%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 75% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 240 15% 88%;
+    --input: 240 20% 94%;
+    --ring: 250 75% 60%;
+
+    --radius: 0.5rem;
+
+    --sidebar-background: 0 0% 98%;
+
+    --sidebar-foreground: 240 5.3% 26.1%;
+
+    --sidebar-primary: 240 5.9% 10%;
+
+    --sidebar-primary-foreground: 0 0% 98%;
+
+    --sidebar-accent: 240 4.8% 95.9%;
+
+    --sidebar-accent-foreground: 240 5.9% 10%;
+
+    --sidebar-border: 220 13% 91%;
+
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    /* Dark gradient backgrounds */
+    --background: 240 15% 8%;
+    --background-gradient: linear-gradient(135deg, hsl(240 15% 8%), hsl(260 20% 10%));
+    --foreground: 240 5% 95%;
+
+    /* Dark card system */
+    --card: 240 15% 12%;
+    --card-hover: 240 20% 15%;
+    --card-foreground: 240 5% 92%;
+
+    --popover: 240 15% 12%;
+    --popover-foreground: 240 5% 92%;
+
+    /* Dark mode primary */
+    --primary: 250 80% 65%;
+    --primary-glow: 250 90% 75%;
+    --primary-foreground: 240 15% 8%;
+
+    /* Dark secondary tones */
+    --secondary: 240 15% 18%;
+    --secondary-hover: 240 20% 22%;
+    --secondary-foreground: 240 5% 85%;
+
+    --muted: 240 15% 16%;
+    --muted-hover: 240 20% 20%;
+    --muted-foreground: 240 5% 65%;
+
+    /* Dark accent */
+    --accent: 280 65% 70%;
+    --accent-glow: 280 75% 80%;
+    --accent-foreground: 240 15% 8%;
+
+    --destructive: 0 80% 65%;
+    --destructive-foreground: 240 15% 8%;
+
+    --border: 240 15% 20%;
+    --input: 240 15% 16%;
+    --ring: 250 80% 65%;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    background: var(--background-gradient);
+    min-height: 100vh;
+  }
+
+  /* Enhanced component styles */
+  .glass-card {
+    @apply backdrop-blur-sm bg-card/80 border border-border/50;
+  }
+
+  .gradient-text {
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .shadow-elegant {
+    box-shadow: 0 10px 30px -10px hsl(var(--primary) / 0.3);
+  }
+
+  .shadow-glow {
+    box-shadow: 0 0 40px hsl(var(--primary-glow) / 0.4);
+  }
+
+  /* Smooth transitions for seamless experience */
+  .smooth-transition {
+    @apply transition-all duration-300 ease-out;
+  }
+
+  .hover-lift {
+    @apply transition-transform duration-200 hover:scale-[1.02] hover:shadow-elegant;
+  }
+
+  .page-transition {
+    @apply transition-all duration-500 ease-out;
+  }
+
+  /* Loading states */
+  .loading-skeleton {
+    @apply animate-pulse bg-muted rounded;
+  }
+
+  /* Interactive elements */
+  .interactive-scale {
+    @apply transition-transform duration-150 active:scale-95;
+  }
+
+  /* Navigation transitions */
+  .nav-item {
+    @apply transition-all duration-200 ease-out;
+  }
+
+  .nav-item:hover {
+    @apply scale-105 shadow-glow;
+  }
+
+  /* Safe area padding for mobile */
+  .safe-area-pb-4 {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+}
