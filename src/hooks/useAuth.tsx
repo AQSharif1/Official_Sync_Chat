@@ -1,4 +1,4 @@
-import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
+import React, { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -6,6 +6,18 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  authState: {
+    isNewUser: boolean;
+    hasCompletedProfile: boolean;
+    shouldShowOnboarding: boolean;
+    isLoading: boolean;
+  };
+  setAuthState: React.Dispatch<React.SetStateAction<{
+    isNewUser: boolean;
+    hasCompletedProfile: boolean;
+    shouldShowOnboarding: boolean;
+    isLoading: boolean;
+  }>>;
   signUp: (email: string, password: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error?: any; success?: boolean }>;
   signOut: () => Promise<void>;
@@ -24,6 +36,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [authState, setAuthState] = useState({
+    isNewUser: false,
+    hasCompletedProfile: false,
+    shouldShowOnboarding: false,
+    isLoading: false,
+  });
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -36,8 +54,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setUser(null);
         setSession(null);
         setLoading(false);
-        // Reset auth state on sign out
-        // Note: setAuthState is managed by useAuthFlow hook
+        setAuthState({
+          isNewUser: false,
+          hasCompletedProfile: false,
+          shouldShowOnboarding: false,
+          isLoading: false,
+        });
       }
     });
 
@@ -142,6 +164,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     user,
     session,
     loading,
+    authState,
+    setAuthState,
     signUp,
     signIn,
     signOut,
