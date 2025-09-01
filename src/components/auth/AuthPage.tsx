@@ -53,24 +53,32 @@ export const AuthPage = () => {
 
     setIsLoading(true);
     try {
+      // Check if email already exists BEFORE attempting signup
+      const { data: existingUser } = await supabase
+        .from('profiles')
+        .select('user_id')
+        .eq('email', formData.email.toLowerCase().trim())
+        .single();
+
+      if (existingUser) {
+        toast({
+          title: "Account already exists",
+          description: "This email is already registered. Please sign in instead.",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return; // Stop here - don't create account
+      }
+
+      // Proceed with signup if email is available
       const { error } = await signUp(formData.email, formData.password);
       
       if (error) {
-        if (error.message?.includes('already registered') || 
-            error.message?.includes('already exists') ||
-            error.message?.includes('User already registered')) {
-          toast({
-            title: "Account already exists",
-            description: "This email is already registered. Please use the Sign In tab to log in to your existing account.",
-            variant: "destructive",
-          });
-        } else {
-          toast({
-            title: "Sign up failed",
-            description: error.message || "An unexpected error occurred.",
-            variant: "destructive",
-          });
-        }
+        toast({
+          title: "Sign up failed",
+          description: error.message || "An unexpected error occurred.",
+          variant: "destructive",
+        });
       } else {
         // Show success message and redirect to login
         setSignupEmail(formData.email);
