@@ -33,25 +33,25 @@ export const useAuthFlow = () => {
       return;
     }
 
-    checkUserStatus();
+    // Only check user status if user exists and is verified
+    if (user.email_confirmed_at) {
+      checkUserStatus();
+    } else {
+      // For unverified users, set a basic state
+      setAuthState({
+        isNewUser: false,
+        hasCompletedProfile: false,
+        shouldShowOnboarding: false,
+        isLoading: false
+      });
+    }
   }, [user, authLoading]);
 
   const checkUserStatus = async () => {
     if (!user?.id) return;
 
     try {
-      // CRITICAL: Check email confirmation FIRST - block everything until confirmed
-      if (!user.email_confirmed_at) {
-        console.log('User email not confirmed, showing email verification required state');
-        setAuthState({
-          isNewUser: false,
-          hasCompletedProfile: false,
-          shouldShowOnboarding: false,
-          isLoading: false
-        });
-        return;
-      }
-
+      // User is already verified at this point, so proceed with profile check
       console.log('User email confirmed at:', user.email_confirmed_at);
 
       // Check if user has a profile
