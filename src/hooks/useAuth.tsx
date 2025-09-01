@@ -6,6 +6,18 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  authState: {
+    isNewUser: boolean;
+    hasCompletedProfile: boolean;
+    shouldShowOnboarding: boolean;
+    isLoading: boolean;
+  };
+  setAuthState: React.Dispatch<React.SetStateAction<{
+    isNewUser: boolean;
+    hasCompletedProfile: boolean;
+    shouldShowOnboarding: boolean;
+    isLoading: boolean;
+  }>>;
   signUp: (email: string, password: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error?: any; success?: boolean }>;
   signOut: () => Promise<void>;
@@ -24,6 +36,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [authState, setAuthState] = useState({
+    isNewUser: false,
+    hasCompletedProfile: false,
+    shouldShowOnboarding: false,
+    isLoading: false,
+  });
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -34,6 +52,80 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           return;
         }
         
+        // Check profile but don't block if missing
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('user_id', session.user.id)
+          .single();
+
+        if (!profile) {
+          // If user is verified, create profile automatically
+          if (session.user.email_confirmed_at) {
+            try {
+              const { error: insertError } = await supabase.from('profiles').insert({
+                user_id: session.user.id,
+                username: `user_${Math.random().toString(36).substr(2, 9)}`,
+                genres: [],
+                personality: [],
+                habits: [],
+                mood: 5,
+                daily_mood: 5,
+                mood_emoji: '😊',
+                show_mood_emoji: false,
+                username_changed: false,
+                group_id: null,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              });
+
+              if (insertError) {
+                console.error('Failed to create profile:', insertError);
+                // Still allow access, profile creation failed
+                setAuthState({
+                  isNewUser: true,
+                  hasCompletedProfile: false,
+                  shouldShowOnboarding: true,
+                  isLoading: false,
+                });
+              } else {
+                // Profile created successfully
+                setAuthState({
+                  isNewUser: false,
+                  hasCompletedProfile: true,
+                  shouldShowOnboarding: false,
+                  isLoading: false,
+                });
+              }
+            } catch (error) {
+              console.error('Profile creation error:', error);
+              // Fallback to onboarding state
+              setAuthState({
+                isNewUser: true,
+                hasCompletedProfile: false,
+                shouldShowOnboarding: true,
+                isLoading: false,
+              });
+            }
+          } else {
+            // User must verify first
+            setAuthState({
+              isNewUser: false,
+              hasCompletedProfile: false,
+              shouldShowOnboarding: false,
+              isLoading: false,
+            });
+          }
+        } else {
+          // User has profile
+          setAuthState({
+            isNewUser: false,
+            hasCompletedProfile: true,
+            shouldShowOnboarding: false,
+            isLoading: false,
+          });
+        }
+        
         setUser(session.user);
         setSession(session);
         setLoading(false);
@@ -41,6 +133,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setUser(null);
         setSession(null);
         setLoading(false);
+        setAuthState({
+          isNewUser: false,
+          hasCompletedProfile: false,
+          shouldShowOnboarding: false,
+          isLoading: false,
+        });
       }
     });
 
@@ -63,6 +161,80 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             await supabase.auth.signOut();
             setLoading(false);
             return;
+          }
+          
+          // Check profile but don't block if missing
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('user_id', session.user.id)
+            .single();
+
+          if (!profile) {
+            // If user is verified, create profile automatically
+            if (session.user.email_confirmed_at) {
+              try {
+                const { error: insertError } = await supabase.from('profiles').insert({
+                  user_id: session.user.id,
+                  username: `user_${Math.random().toString(36).substr(2, 9)}`,
+                  genres: [],
+                  personality: [],
+                  habits: [],
+                  mood: 5,
+                  daily_mood: 5,
+                  mood_emoji: '😊',
+                  show_mood_emoji: false,
+                  username_changed: false,
+                  group_id: null,
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString()
+                });
+
+                if (insertError) {
+                  console.error('Failed to create profile:', insertError);
+                  // Still allow access, profile creation failed
+                  setAuthState({
+                    isNewUser: true,
+                    hasCompletedProfile: false,
+                    shouldShowOnboarding: true,
+                    isLoading: false,
+                  });
+                } else {
+                  // Profile created successfully
+                  setAuthState({
+                    isNewUser: false,
+                    hasCompletedProfile: true,
+                    shouldShowOnboarding: false,
+                    isLoading: false,
+                  });
+                }
+              } catch (error) {
+                console.error('Profile creation error:', error);
+                // Fallback to onboarding state
+                setAuthState({
+                  isNewUser: true,
+                  hasCompletedProfile: false,
+                  shouldShowOnboarding: true,
+                  isLoading: false,
+                });
+              }
+            } else {
+              // User must verify first
+              setAuthState({
+                isNewUser: false,
+                hasCompletedProfile: false,
+                shouldShowOnboarding: false,
+                isLoading: false,
+              });
+            }
+          } else {
+            // User has profile
+            setAuthState({
+              isNewUser: false,
+              hasCompletedProfile: true,
+              shouldShowOnboarding: false,
+              isLoading: false,
+            });
           }
           
           setUser(session.user);
@@ -115,18 +287,83 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         return false;
       }
       
-      // Verify the session is still valid by making a simple API call
-      // Check if user has a profile
+      // Check if user has a profile - but don't block if missing
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('id')
         .eq('user_id', session.user.id)
         .single();
 
-      if (profileError || !profile) {
-        return false;
+      if (!profile) {
+        // If user is verified, create profile automatically
+        if (session.user.email_confirmed_at) {
+          try {
+            const { error: insertError } = await supabase.from('profiles').insert({
+              user_id: session.user.id,
+              username: `user_${Math.random().toString(36).substr(2, 9)}`,
+              genres: [],
+              personality: [],
+              habits: [],
+              mood: 5,
+              daily_mood: 5,
+              mood_emoji: '😊',
+              show_mood_emoji: false,
+              username_changed: false,
+              group_id: null,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
+
+            if (insertError) {
+              console.error('Failed to create profile:', insertError);
+              // Still allow access, profile creation failed
+              setAuthState({
+                isNewUser: true,
+                hasCompletedProfile: false,
+                shouldShowOnboarding: true,
+                isLoading: false,
+              });
+              return true; // Allow access for verified users
+            } else {
+              // Profile created successfully
+              setAuthState({
+                isNewUser: false,
+                hasCompletedProfile: true,
+                shouldShowOnboarding: false,
+                isLoading: false,
+              });
+              return true; // Allow access
+            }
+          } catch (error) {
+            console.error('Profile creation error:', error);
+            // Fallback to onboarding state
+            setAuthState({
+              isNewUser: true,
+              hasCompletedProfile: false,
+              shouldShowOnboarding: true,
+              isLoading: false,
+            });
+            return true; // Allow access for verified users
+          }
+        } else {
+          // User must verify first
+          setAuthState({
+            isNewUser: false,
+            hasCompletedProfile: false,
+            shouldShowOnboarding: false,
+            isLoading: false,
+          });
+          return false; // Block unverified users
+        }
       }
 
+      // User has profile and is verified
+      setAuthState({
+        isNewUser: false,
+        hasCompletedProfile: true,
+        shouldShowOnboarding: false,
+        isLoading: false,
+      });
       return true;
     } catch (error) {
       console.error('Auth stability check error:', error);
@@ -197,6 +434,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     user,
     session,
     loading,
+    authState,
+    setAuthState,
     signUp,
     signIn,
     signOut,
