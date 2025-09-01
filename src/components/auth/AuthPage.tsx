@@ -53,21 +53,22 @@ export const AuthPage = () => {
 
     setIsLoading(true);
     try {
-      // Check if email already exists BEFORE attempting signup
-      const { data: existingUser } = await supabase
-        .from('profiles')
-        .select('user_id')
-        .eq('email', formData.email.toLowerCase().trim())
-        .single();
-
-      if (existingUser) {
+      // Check if email already exists using secure RPC function
+      const { data: emailExists, error: checkError } = await supabase.rpc('email_exists', {
+        check_email: formData.email.toLowerCase().trim()
+      });
+      
+      if (checkError) {
+        console.error('Error checking email availability:', checkError);
+        // If we can't check, proceed with signup and let Supabase handle it
+      } else if (emailExists === true) {
         toast({
           title: "Account already exists",
           description: "This email is already registered. Please sign in instead.",
           variant: "destructive",
         });
         setIsLoading(false);
-        return; // Stop here - don't create account
+        return; // Stop here - don't create account or send confirmation email
       }
 
       // Proceed with signup if email is available
