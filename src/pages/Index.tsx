@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useAuthFlow } from '@/hooks/useAuthFlow';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -19,7 +19,7 @@ import { Button } from '@/components/ui/button';
 const Index = () => {
   const { user } = useAuth();
   const { authState } = useAuthFlow();
-  const { userProfile, currentGroup, isLoading: dataLoading, setCurrentGroup, error: dataError, hasTimedOut, retryDataLoad } = useAppData();
+  const { userProfile, currentGroup, isLoading: dataLoading, setCurrentGroup, error: dataError, hasTimedOut } = useAppData();
 
   const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState<'home' | 'chat' | 'profile' | 'settings'>('home');
@@ -81,16 +81,16 @@ const Index = () => {
     return <AuthPage />;
   }
 
-  // ✅ Show email verification required message
+  // ✅ Show email verification prompt (non-blocking)
   if (!user.email_confirmed_at) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <div className="text-center space-y-6 max-w-md mx-auto">
           <div className="text-6xl mb-4">📧</div>
-          <h1 className="text-2xl font-bold text-foreground">Email Verification Required</h1>
+          <h1 className="text-2xl font-bold text-foreground">Verify Your Email</h1>
           <p className="text-muted-foreground">
-            Please check your email and click the verification link to continue. 
-            You won't be able to access the app until your email is confirmed.
+            Please check your email and click the verification link to access all features. 
+            You can still use the app, but some features may be limited.
           </p>
           <div className="space-y-3">
             <Button 
@@ -98,6 +98,42 @@ const Index = () => {
               className="w-full"
             >
               I've Verified My Email
+            </Button>
+            <Button 
+              variant="outline"
+              onClick={() => {
+                // Allow user to continue with limited access
+                window.location.href = '/';
+              }}
+              className="w-full"
+            >
+              Continue Anyway
+            </Button>
+            <Button 
+              variant="ghost"
+              onClick={() => supabase.auth.signOut()}
+              className="w-full text-muted-foreground"
+            >
+              Sign Out
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ✅ Show spinner if we're still checking auth status with escape route
+  if (authState.isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <div className="text-center space-y-6 max-w-md mx-auto">
+          <LoadingSpinner size="lg" text="Checking your account..." />
+          <div className="space-y-3">
+            <Button 
+              onClick={() => window.location.reload()}
+              className="w-full"
+            >
+              Refresh Page
             </Button>
             <Button 
               variant="outline"
@@ -110,11 +146,6 @@ const Index = () => {
         </div>
       </div>
     );
-  }
-
-  // ✅ Show spinner if we're still checking auth status
-  if (authState.isLoading) {
-    return <LoadingSpinner size="lg" text="Checking your account..." />
   }
 
   // ✅ Show spinner if we're still trying to get the profile
