@@ -32,11 +32,24 @@ export const EmailVerification = () => {
       const { error } = await resendVerification(email);
       
       if (error) {
-        toast({
-          title: "Failed to resend",
-          description: error.message || "Please try again later.",
-          variant: "destructive",
-        });
+        // Check if this is the "already verified" message
+        if (error.message?.includes('already verified') || 
+            error.message?.includes('already confirmed') ||
+            error.message?.includes('email_confirmed_at')) {
+          toast({
+            title: "Email Already Verified",
+            description: "Your email is already verified. You can sign in normally.",
+            variant: "default",
+          });
+          // Redirect to sign in after a short delay
+          setTimeout(() => navigate('/'), 2000);
+        } else {
+          toast({
+            title: "Failed to resend",
+            description: error.message || "Please try again later.",
+            variant: "destructive",
+          });
+        }
       } else {
         setResendSuccess(true);
         toast({

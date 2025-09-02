@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useAuthFlow } from '@/hooks/useAuthFlow';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -15,6 +15,178 @@ import { GroupChat } from '@/components/chat/GroupChat';
 import { AuthPage } from '@/components/auth/AuthPage';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Button } from '@/components/ui/button';
+
+// Component to handle auth loading with timeout
+const AuthLoadingWithTimeout = () => {
+  const [showTimeout, setShowTimeout] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState(10);
+
+  useEffect(() => {
+    // Start countdown timer
+    const timer = setInterval(() => {
+      setTimeRemaining(prev => {
+        if (prev <= 1) {
+          setShowTimeout(true);
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    // Cleanup timer on unmount
+    return () => clearInterval(timer);
+  }, []);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    window.location.href = '/';
+  };
+
+  if (showTimeout) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <div className="text-center space-y-6 max-w-md mx-auto">
+          <div className="text-6xl mb-4">⚠️</div>
+          <h1 className="text-2xl font-bold text-foreground">Authentication Timeout</h1>
+          <p className="text-muted-foreground">
+            We're having trouble verifying your account. This might be due to a network issue or server problem.
+          </p>
+          <div className="space-y-3">
+            <Button 
+              onClick={handleSignOut}
+              className="w-full"
+            >
+              Return to Login
+            </Button>
+            <Button 
+              variant="outline"
+              onClick={() => window.location.reload()}
+              className="w-full"
+            >
+              Try Again
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            If this problem persists, please check your internet connection or try again later.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="text-center space-y-6 max-w-md mx-auto">
+        <LoadingSpinner size="lg" text="Checking your account..." />
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            If this takes longer than {timeRemaining} seconds, we'll redirect you back to login.
+          </p>
+          <Button 
+            onClick={() => window.location.reload()}
+            className="w-full"
+          >
+            Refresh Page
+          </Button>
+          <Button 
+            variant="outline"
+            onClick={handleSignOut}
+            className="w-full"
+          >
+            Sign Out
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Component to handle profile loading with timeout
+const ProfileLoadingWithTimeout = () => {
+  const [showTimeout, setShowTimeout] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState(10);
+
+  useEffect(() => {
+    // Start countdown timer
+    const timer = setInterval(() => {
+      setTimeRemaining(prev => {
+        if (prev <= 1) {
+          setShowTimeout(true);
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    // Cleanup timer on unmount
+    return () => clearInterval(timer);
+  }, []);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    window.location.href = '/';
+  };
+
+  if (showTimeout) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <div className="text-center space-y-6 max-w-md mx-auto">
+          <div className="text-6xl mb-4">⚠️</div>
+          <h1 className="text-2xl font-bold text-foreground">Profile Loading Timeout</h1>
+          <p className="text-muted-foreground">
+            We're having trouble loading your profile. This might be due to a network issue or server problem.
+          </p>
+          <div className="space-y-3">
+            <Button 
+              onClick={handleSignOut}
+              className="w-full"
+            >
+              Return to Login
+            </Button>
+            <Button 
+              variant="outline"
+              onClick={() => window.location.reload()}
+              className="w-full"
+            >
+              Try Again
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            If this problem persists, please check your internet connection or try again later.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="text-center space-y-6 max-w-md mx-auto">
+        <LoadingSpinner size="lg" text="Loading your profile..." />
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            If this takes longer than {timeRemaining} seconds, we'll redirect you back to login.
+          </p>
+          <Button 
+            onClick={() => window.location.reload()}
+            className="w-full"
+          >
+            Refresh Page
+          </Button>
+          <Button 
+            variant="outline"
+            onClick={handleSignOut}
+            className="w-full"
+          >
+            Sign Out
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const Index = () => {
   const { user } = useAuth();
@@ -122,35 +294,14 @@ const Index = () => {
     );
   }
 
-  // ✅ Show spinner if we're still checking auth status with escape route
+  // ✅ Show spinner if we're still checking auth status with escape route and timeout
   if (authState.isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <div className="text-center space-y-6 max-w-md mx-auto">
-          <LoadingSpinner size="lg" text="Checking your account..." />
-          <div className="space-y-3">
-            <Button 
-              onClick={() => window.location.reload()}
-              className="w-full"
-            >
-              Refresh Page
-            </Button>
-            <Button 
-              variant="outline"
-              onClick={() => supabase.auth.signOut()}
-              className="w-full"
-            >
-              Sign Out
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
+    return <AuthLoadingWithTimeout />;
   }
 
-  // ✅ Show spinner if we're still trying to get the profile
+  // ✅ Show spinner if we're still trying to get the profile with timeout
   if (user && !userProfile && dataLoading) {
-    return <LoadingSpinner size="lg" text="Loading your profile..." />
+    return <ProfileLoadingWithTimeout />;
   }
 
   // ✅ Show error UI if profile fetch failed or took too long
