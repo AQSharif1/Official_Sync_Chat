@@ -63,6 +63,13 @@ export const useAuthFlow = () => {
 
       if (error && error.code !== 'PGRST116') {
         console.error('Error checking profile:', error);
+        // Set loading to false and allow user to proceed
+        setAuthState({
+          isNewUser: false,
+          hasCompletedProfile: false,
+          shouldShowOnboarding: true,
+          isLoading: false
+        });
         return;
       }
 
@@ -105,6 +112,7 @@ export const useAuthFlow = () => {
       }
     } catch (error) {
       console.error('Error in checkUserStatus:', error);
+      // Ensure loading state is cleared on any error
       setAuthState({
         isNewUser: false,
         hasCompletedProfile: false,

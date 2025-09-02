@@ -102,7 +102,13 @@ export const useAppData = () => {
     } catch (error: any) {
       console.error('Error fetching user profile:', error);
       
-      if (error.message === 'Request timeout') {
+      // Don't retry on RLS/permission errors
+      if (error.message?.includes('permission denied') || 
+          error.message?.includes('row-level security') ||
+          error.message?.includes('RLS')) {
+        setError('Authentication error. Please sign out and sign in again.');
+        setTimeoutState(true);
+      } else if (error.message === 'Request timeout') {
         setError('Profile loading timed out. Please refresh the page.');
         setTimeoutState(true);
       } else {
@@ -153,7 +159,13 @@ export const useAppData = () => {
     } catch (error: any) {
       console.error('Error fetching current group:', error);
       
-      if (error.message === 'Request timeout') {
+      // Don't retry on RLS/permission errors
+      if (error.message?.includes('permission denied') || 
+          error.message?.includes('row-level security') ||
+          error.message?.includes('RLS')) {
+        setError('Authentication error. Please sign out and sign in again.');
+        setTimeoutState(true);
+      } else if (error.message === 'Request timeout') {
         setError('Group data loading timed out. Please refresh the page.');
         setTimeoutState(true);
       } else {
