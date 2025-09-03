@@ -10,6 +10,8 @@ interface VoiceParticipant {
   name: string;
   isMuted: boolean;
   isDeafened: boolean;
+  isSpeaking: boolean;
+  handRaised: boolean;
   joinedAt: string;
 }
 
@@ -28,6 +30,7 @@ interface VoiceRoomState {
   isMuted: boolean;
   isDeafened: boolean;
   isSpeaking: boolean;
+  handRaised: boolean;
   messages: VoiceMessage[];
   currentTranscript: string;
   isCollapsed: boolean;
@@ -39,6 +42,7 @@ interface VoiceRoomActions {
   leaveVoiceRoom: () => Promise<void>;
   toggleMute: () => void;
   toggleDeafen: () => void;
+  toggleHandRaise: () => void;
   toggleCollapse: () => void;
   toggleMinimize: () => void;
   getConnectionStatus: () => { isConnected: boolean; participantCount: number };
@@ -143,6 +147,7 @@ export const VoiceRoomProvider: React.FC<VoiceRoomProviderProps> = ({ children }
     isMuted: false,
     isDeafened: false,
     isSpeaking: false,
+    handRaised: false,
     messages: [],
     currentTranscript: '',
     isCollapsed: true,
@@ -277,6 +282,8 @@ export const VoiceRoomProvider: React.FC<VoiceRoomProviderProps> = ({ children }
               name: participant.name,
               isMuted: participant.isMuted || false,
               isDeafened: participant.isDeafened || false,
+              isSpeaking: participant.isSpeaking || false,
+              handRaised: participant.handRaised || false,
               joinedAt: participant.joinedAt
             });
           }
@@ -353,6 +360,8 @@ export const VoiceRoomProvider: React.FC<VoiceRoomProviderProps> = ({ children }
             name: user.email?.split('@')[0] || 'User',
             isMuted: false,
             isDeafened: false,
+            isSpeaking: false,
+            handRaised: false,
             joinedAt: new Date().toISOString()
           };
 
@@ -437,6 +446,8 @@ export const VoiceRoomProvider: React.FC<VoiceRoomProviderProps> = ({ children }
       name: user.email?.split('@')[0] || 'User',
       isMuted: newMutedState,
       isDeafened: state.isDeafened,
+      isSpeaking: state.isSpeaking,
+      handRaised: state.handRaised,
       joinedAt: new Date().toISOString()
     };
     
@@ -455,11 +466,33 @@ export const VoiceRoomProvider: React.FC<VoiceRoomProviderProps> = ({ children }
       name: user.email?.split('@')[0] || 'User',
       isMuted: state.isMuted,
       isDeafened: newDeafenedState,
+      isSpeaking: state.isSpeaking,
+      handRaised: state.handRaised,
       joinedAt: new Date().toISOString()
     };
     
     debouncedPresenceUpdate();
-  }, [user, state.isMuted, state.isDeafened, debouncedPresenceUpdate]);
+  }, [user, state.isMuted, state.isDeafened, state.isSpeaking, state.handRaised, debouncedPresenceUpdate]);
+
+  const toggleHandRaise = useCallback(() => {
+    if (!user || !channelRef.current) return;
+
+    const newHandRaisedState = !state.handRaised;
+    setState(prev => ({ ...prev, handRaised: newHandRaisedState }));
+
+    // Store latest data in ref instead of passing directly
+    latestPresenceDataRef.current = {
+      userId: user.id,
+      name: user.email?.split('@')[0] || 'User',
+      isMuted: state.isMuted,
+      isDeafened: state.isDeafened,
+      isSpeaking: state.isSpeaking,
+      handRaised: newHandRaisedState,
+      joinedAt: new Date().toISOString()
+    };
+    
+    debouncedPresenceUpdate();
+  }, [user, state.isMuted, state.isDeafened, state.isSpeaking, state.handRaised, debouncedPresenceUpdate]);
 
   // UI controls
   const toggleCollapse = useCallback(() => {
@@ -561,6 +594,7 @@ export const VoiceRoomProvider: React.FC<VoiceRoomProviderProps> = ({ children }
     leaveVoiceRoom,
     toggleMute,
     toggleDeafen,
+    toggleHandRaise,
     toggleCollapse,
     toggleMinimize,
     getConnectionStatus,
@@ -570,6 +604,7 @@ export const VoiceRoomProvider: React.FC<VoiceRoomProviderProps> = ({ children }
     leaveVoiceRoom,
     toggleMute,
     toggleDeafen,
+    toggleHandRaise,
     toggleCollapse,
     toggleMinimize,
     getConnectionStatus,

@@ -7,11 +7,11 @@ import { PreferencesStep } from './PreferencesStep';
 import { UsernameStep } from './UsernameStep';
 import { LegalConsentStep } from './LegalConsentStep';
 import { GroupMatchingFlow } from '@/components/group/GroupMatchingFlow';
-import { AuthPage } from '@/components/auth/AuthPage';
+import { WelcomingLanding } from '@/components/landing/WelcomingLanding';
 import { useAuth } from '@/hooks/useAuth';
-
 import { useOnboardingCompletion } from '@/hooks/useOnboardingCompletion';
 import { useToast } from '@/hooks/use-toast';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface UserProfile {
   genres: string[];
@@ -28,15 +28,10 @@ export const OnboardingFlow = ({ onComplete }: OnboardingFlowProps) => {
   const { user, loading, signOut } = useAuth();
   const { completeOnboarding, isProcessing } = useOnboardingCompletion();
   const { toast } = useToast();
+  const { theme, toggleTheme } = useTheme();
   const [currentStep, setCurrentStep] = useState(0);
   const [showGroupMatching, setShowGroupMatching] = useState(false);
   const [groupId, setGroupId] = useState<string | null>(null);
-  const [isDark, setIsDark] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return document.documentElement.classList.contains('dark');
-    }
-    return false;
-  });
   const [userProfile, setUserProfile] = useState<UserProfile>({
     genres: [],
     personality: [],
@@ -45,17 +40,7 @@ export const OnboardingFlow = ({ onComplete }: OnboardingFlowProps) => {
   });
   const [legalConsentGiven, setLegalConsentGiven] = useState(false);
 
-  useEffect(() => {
-    if (isDark) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [isDark]);
-
-  const toggleTheme = () => {
-    setIsDark(!isDark);
-  };
+  // Theme is now managed by ThemeContext
 
   // Show loading state
   if (loading) {
@@ -71,7 +56,7 @@ export const OnboardingFlow = ({ onComplete }: OnboardingFlowProps) => {
 
   // Show auth page if user is not authenticated
   if (!user) {
-    return <AuthPage />;
+    return <WelcomingLanding />;
   }
 
   const handleNext = async () => {
@@ -200,7 +185,7 @@ export const OnboardingFlow = ({ onComplete }: OnboardingFlowProps) => {
                 onClick={toggleTheme}
                 className="rounded-full"
               >
-                {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
               </Button>
             </div>
           </div>
@@ -235,7 +220,7 @@ export const OnboardingFlow = ({ onComplete }: OnboardingFlowProps) => {
             onClick={toggleTheme}
             className="rounded-full"
           >
-            {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </Button>
         </div>
       </div>

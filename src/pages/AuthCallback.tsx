@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '../integrations/supabase/client';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,7 @@ export const AuthCallback = () => {
   const [message, setMessage] = useState('');
 
   useEffect(() => {
-    const handleAuthCallback = async () => {
+    const handleRedirect = async () => {
       try {
         // Get the access_token and refresh_token from URL params
         const accessToken = searchParams.get('access_token');
@@ -49,31 +49,62 @@ export const AuthCallback = () => {
           return;
         }
 
-        // Get the user to check email verification status
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        if (user && user.email_confirmed_at) {
-          setVerificationStatus('success');
-          setMessage('Email verified successfully! Redirecting to app...');
+        // Get the session properly
+        const { data, error: sessionDataError } = await supabase.auth.getSession();
+        if (sessionDataError) {
+          console.error('AuthCallback failed:', sessionDataError);
+          setVerificationStatus('error');
+          setMessage('Failed to get session data');
           setIsVerifying(false);
-          
-          // Redirect to home after a short delay
           setTimeout(() => {
-            navigate('/', { replace: true });
+            navigate('/auth', { replace: true });
           }, 2000);
+          return;
+        }
+
+        const session = data.session;
+        if (session && session.user.email_confirmed_at) {
+          // Email verified successfully - check profile status
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('user_id', session.user.id)
+            .single();
+
+          setVerificationStatus('success');
+          
+          if (profile) {
+            setMessage('Email verified successfully! Redirecting to app...');
+            // User has profile - go to main app
+            setTimeout(() => {
+              navigate('/app', { replace: true });
+            }, 2000);
+          } else {
+            setMessage('Email verified! Redirecting to onboarding...');
+            // User needs to complete profile - go to onboarding
+            setTimeout(() => {
+              navigate('/onboarding', { replace: true });
+            }, 2000);
+          }
+          
+          setIsVerifying(false);
         } else {
           setVerificationStatus('error');
           setMessage('Email verification failed. Please try again.');
           setIsVerifying(false);
         }
       } catch (error: any) {
+        console.error('AuthCallback error:', error);
         setVerificationStatus('error');
         setMessage(error.message || 'An unexpected error occurred');
         setIsVerifying(false);
+        setTimeout(() => {
+          navigate('/auth', { replace: true });
+        }, 2000);
       }
     };
 
-    handleAuthCallback();
+    handleRedirect();
   }, [searchParams, navigate]);
 
   if (isVerifying) {
@@ -122,18 +153,18 @@ export const AuthCallback = () => {
           ) : (
             <div className="space-y-3">
               <Button
-                onClick={() => navigate('/')}
+                onClick={() => navigate('/auth')}
                 className="w-full"
               >
                 Go to Sign In
               </Button>
               
               <Button
-                onClick={() => window.location.reload()}
+                onClick={() => navigate('/')}
                 variant="outline"
                 className="w-full"
               >
-                Try Again
+                Go to Home
               </Button>
             </div>
           )}

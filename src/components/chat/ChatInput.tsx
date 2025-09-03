@@ -6,6 +6,8 @@ import { VoiceRecorder } from './VoiceRecorder';
 import { GiphyPicker } from './GiphyPicker';
 import { ChatToolsPanel } from './ChatToolsPanel';
 import { GameQuickPicker } from './GameQuickPicker';
+import { Volume2 } from 'lucide-react';
+import { useVoiceRoom } from '@/contexts/VoiceRoomContext';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { validateChatMessage } from '@/lib/security';
 import { useToast } from '@/hooks/use-toast';
@@ -17,13 +19,16 @@ interface ChatInputProps {
   onToolSelect?: (tool: string) => void;
   disabled?: boolean;
   loading?: boolean;
+  groupId?: string;
+  groupName?: string;
 }
 
-export const ChatInput = ({ onSendMessage, onSendGif, onSendVoice, onToolSelect, disabled, loading }: ChatInputProps) => {
+export const ChatInput = ({ onSendMessage, onSendGif, onSendVoice, onToolSelect, disabled, loading, groupId, groupName }: ChatInputProps) => {
   const [message, setMessage] = useState('');
   const [showToolsPanel, setShowToolsPanel] = useState(false);
   const [sendingMessage, setSendingMessage] = useState(false);
   const { toast } = useToast();
+  const { joinVoiceRoom, leaveVoiceRoom, isConnected } = useVoiceRoom();
 
   const handleSendText = async () => {
     if (message.trim() && !sendingMessage) {
@@ -102,6 +107,24 @@ export const ChatInput = ({ onSendMessage, onSendGif, onSendVoice, onToolSelect,
               onToggle={() => setShowToolsPanel(!showToolsPanel)}
             />
             <GameQuickPicker onGameSelect={handleToolSelect} disabled={disabled} />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                if (groupId && groupName) {
+                  if (isConnected) {
+                    await leaveVoiceRoom();
+                  } else {
+                    await joinVoiceRoom(groupId, groupName);
+                  }
+                }
+              }}
+              disabled={disabled || !groupId || !groupName}
+              className={`hover-scale ${isConnected ? 'bg-green-100 border-green-300 text-green-700' : ''}`}
+              title="Voice Room"
+            >
+              <Volume2 className="w-4 h-4" />
+            </Button>
           </div>
           
           <div className="flex items-center gap-1">

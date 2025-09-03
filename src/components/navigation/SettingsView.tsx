@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
-import { useTheme } from 'next-themes';
+import { useTheme } from '@/contexts/ThemeContext';
 import { 
   Bell, 
   Crown, 
@@ -388,7 +388,7 @@ export const SettingsView = ({ className = "", onGoHome }: SettingsViewProps) =>
 
       {/* Version Info */}
       <div className="text-center text-xs text-muted-foreground">
-        ChatApp v1.0.0 • Made with ❤️ by Your Team
+        SyncChat v1.0.0 • Connect • Chat • Discover
       </div>
     </div>
   );

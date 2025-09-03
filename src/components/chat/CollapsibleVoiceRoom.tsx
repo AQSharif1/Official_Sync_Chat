@@ -13,7 +13,12 @@ import {
   X,
   ChevronDown,
   ChevronUp,
-  Volume2
+  Volume2,
+  Hand,
+  Share2,
+  Settings,
+  Phone,
+  PhoneOff
 } from 'lucide-react';
 import { useVoiceRoom } from '@/contexts/VoiceRoomContext';
 import { cn } from '@/lib/utils';
@@ -30,14 +35,18 @@ export const CollapsibleVoiceRoom = ({ groupName }: CollapsibleVoiceRoomProps) =
     isMuted,
     isDeafened,
     isSpeaking,
+    handRaised,
     messages,
     currentTranscript,
     isCollapsed,
     leaveVoiceRoom,
     toggleMute,
     toggleDeafen,
+    toggleHandRaise,
     toggleCollapse,
   } = useVoiceRoom();
+
+  const [showSettings, setShowSettings] = useState(false);
 
   // Don't render if not connected
   if (!isConnected) {
@@ -60,13 +69,26 @@ export const CollapsibleVoiceRoom = ({ groupName }: CollapsibleVoiceRoomProps) =
     if (participant.isDeafened) {
       return <VolumeX className="h-3 w-3 text-orange-500" />;
     }
-    return <Mic className="h-3 w-3 text-green-500" />;
+    if (participant.isSpeaking) {
+      return <div className="flex items-center gap-1">
+        <Mic className="h-3 w-3 text-green-500" />
+        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+      </div>;
+    }
+    return <Mic className="h-3 w-3 text-gray-400" />;
+  };
+
+  const getParticipantStatus = (participant: any) => {
+    if (participant.handRaised) {
+      return <Hand className="h-3 w-3 text-yellow-500" />;
+    }
+    return getSpeakingIndicator(participant);
   };
 
   return (
     <Card className={cn(
-      "fixed bottom-20 right-6 w-80 z-40 transition-all duration-300 shadow-xl border-2",
-      isCollapsed ? "h-16" : "h-96",
+      "fixed bottom-20 right-6 z-40 transition-all duration-300 shadow-xl border-2",
+      isCollapsed ? "w-80 h-16" : "w-96 h-[500px]",
       isConnected ? "border-green-500" : "border-gray-300"
     )}>
       <CardHeader className="pb-2 cursor-pointer" onClick={toggleCollapse}>
@@ -90,8 +112,8 @@ export const CollapsibleVoiceRoom = ({ groupName }: CollapsibleVoiceRoomProps) =
 
       {!isCollapsed && (
         <CardContent className="space-y-4">
-          {/* Controls */}
-          <div className="flex gap-2">
+          {/* Main Controls */}
+          <div className="flex gap-2 mb-3">
             <Button
               variant={isMuted ? "destructive" : "default"}
               size="sm"
@@ -113,22 +135,57 @@ export const CollapsibleVoiceRoom = ({ groupName }: CollapsibleVoiceRoomProps) =
             </Button>
           </div>
 
+          {/* Secondary Controls */}
+          <div className="flex gap-2 mb-4">
+            <Button
+              variant={handRaised ? "default" : "outline"}
+              size="sm"
+              onClick={toggleHandRaise}
+              className={cn(
+                "flex-1",
+                handRaised && "bg-yellow-500 hover:bg-yellow-600 text-white"
+              )}
+            >
+              <Hand className="h-4 w-4 mr-2" />
+              {handRaised ? "Lower Hand" : "Raise Hand"}
+            </Button>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowSettings(!showSettings)}
+              className="flex-1"
+            >
+              <Settings className="h-4 w-4 mr-2" />
+              Settings
+            </Button>
+          </div>
+
           {/* Participants */}
           <div className="space-y-2">
             <h4 className="text-sm font-medium flex items-center gap-2">
               <Users className="h-4 w-4" />
               Participants ({participantCount})
             </h4>
-            <div className="space-y-2 max-h-32 overflow-y-auto">
+            <div className="space-y-2 max-h-40 overflow-y-auto">
               {participants.map((participant) => (
-                <div key={participant.userId} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
-                  <Avatar className="h-6 w-6">
-                    <AvatarFallback className="text-xs">
-                      {getParticipantInitials(participant.name)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="text-sm font-medium flex-1">{participant.name}</span>
-                  {getSpeakingIndicator(participant)}
+                <div key={participant.userId} className={cn(
+                  "flex items-center gap-2 p-2 rounded-lg transition-all duration-200",
+                  participant.isSpeaking ? "bg-green-50 border border-green-200" : "bg-gray-50",
+                  participant.handRaised && "bg-yellow-50 border border-yellow-200"
+                )}>
+                  <div className="relative">
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback className="text-xs">
+                        {getParticipantInitials(participant.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                    {participant.isSpeaking && (
+                      <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full animate-pulse" />
+                    )}
+                  </div>
+                  <span className="text-sm font-medium flex-1 truncate">{participant.name}</span>
+                  {getParticipantStatus(participant)}
                 </div>
               ))}
               {participants.length === 0 && (
@@ -176,6 +233,31 @@ export const CollapsibleVoiceRoom = ({ groupName }: CollapsibleVoiceRoomProps) =
             </div>
           )}
 
+          {/* Settings Panel */}
+          {showSettings && (
+            <div className="p-3 bg-gray-50 rounded-lg space-y-2">
+              <h5 className="text-sm font-medium">Voice Settings</h5>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs">Input Volume</span>
+                  <div className="w-20 h-1 bg-gray-200 rounded-full">
+                    <div className="w-3/4 h-full bg-blue-500 rounded-full" />
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs">Output Volume</span>
+                  <div className="w-20 h-1 bg-gray-200 rounded-full">
+                    <div className="w-4/5 h-full bg-green-500 rounded-full" />
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs">Echo Cancellation</span>
+                  <div className="w-4 h-4 bg-green-500 rounded" />
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Leave Button */}
           <Button
             variant="destructive"
@@ -183,7 +265,7 @@ export const CollapsibleVoiceRoom = ({ groupName }: CollapsibleVoiceRoomProps) =
             onClick={leaveVoiceRoom}
             className="w-full"
           >
-            <X className="h-4 w-4 mr-2" />
+            <PhoneOff className="h-4 w-4 mr-2" />
             Leave Voice Room
           </Button>
         </CardContent>

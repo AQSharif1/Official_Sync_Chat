@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Users, ArrowLeft, Volume2, Trophy, Share2, Lightbulb, Home, Eraser, MessageCircle } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Users, ArrowLeft, Volume2, Trophy, Share2, Lightbulb, Home, Eraser, MessageCircle, MoreVertical, Settings } from 'lucide-react';
 import { GroupMembersList } from './GroupMembersList';
 import { ChatInput } from './ChatInput';
 import { GroupSwitchDialog } from './GroupSwitchDialog';
@@ -12,7 +13,7 @@ import { TypingIndicator } from './TypingIndicator';
 import { PinnedMessagesPanel } from './PinnedMessagesPanel';
 import { MessageBubble } from './MessageBubble';
 import { CollapsibleVoiceRoom } from './CollapsibleVoiceRoom';
-import { FloatingVoiceButton } from './FloatingVoiceButton';
+
 import { ChatPoll, CreatePoll } from './ChatPoll';
 import { PlaylistBuilder, CreatePlaylist } from './PlaylistBuilder';
 import { WouldYouRather, WOULD_YOU_RATHER_PROMPTS } from './WouldYouRather';
@@ -39,6 +40,7 @@ import {
 } from '@/hooks/useOptimizedChatTools';
 import { useEngagement } from '@/hooks/useEngagement';
 import { useEnhancedKarma } from '@/hooks/useEnhancedKarma';
+
 import { useDailyPrompts } from '@/hooks/useDailyPrompts';
 import { useInputValidation } from '@/hooks/useInputValidation';
 import { usePerformanceMonitor } from '@/hooks/usePerformanceMonitor';
@@ -71,6 +73,7 @@ interface GroupChatProps {
 export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, onGoHome }: GroupChatProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
+
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { messages, loading: messagesLoading, addMessage, addReaction, refetch } = useChatMessages(groupId);
   const { typingUsers } = useTypingIndicator(groupId, user?.id || '');
@@ -654,69 +657,91 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
         />
       )}
       <div className="flex flex-col h-[calc(100vh-4rem)] max-w-4xl mx-auto bg-background rounded-lg shadow-lg overflow-hidden">
-        {/* Chat Header */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 sm:p-4 border-b bg-card/80 backdrop-blur-sm sticky top-0 z-10 gap-2 sm:gap-0">
-          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-            <div className="flex items-center gap-2">
-              <Users className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
-              <h2 className="font-semibold text-sm sm:text-base truncate max-w-[150px] sm:max-w-none">{groupName}</h2>
-              {groupKarmaTotal > 0 && (
-                <Badge variant="outline" className="text-xs px-2 py-0 h-5">
-                  {groupKarmaTotal} ⭐
-                </Badge>
-              )}
-            </div>
-            <Badge variant="secondary" className="text-xs">{groupVibe}</Badge>
-            {!isConnected && (
-              <Badge variant="destructive" className="text-xs animate-pulse">
-                Reconnecting...
-              </Badge>
-            )}
-            <div className="hidden sm:flex items-center gap-2">
-              <GroupNameManagement 
-                groupId={groupId}
-                currentName={groupName}
-              />
-              <GroupMembersList 
-                groupId={groupId}
-                memberCount={actualMemberCount}
-              />
+        {/* Modern Chat Header */}
+        <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-background to-muted/30 backdrop-blur-sm sticky top-0 z-10">
+          {/* Left Section - Room Info */}
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 flex items-center justify-center flex-shrink-0">
+                <Users className="w-4 h-4 text-white" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h2 className="font-semibold text-lg truncate text-foreground">{groupName}</h2>
+                <div className="flex items-center gap-2 mt-1">
+                  <Badge variant="secondary" className="text-xs px-2 py-0.5">
+                    {groupVibe}
+                  </Badge>
+                  {groupKarmaTotal > 0 && (
+                    <Badge variant="outline" className="text-xs px-2 py-0.5">
+                      {groupKarmaTotal} ⭐
+                    </Badge>
+                  )}
+                  {!isConnected && (
+                    <Badge variant="destructive" className="text-xs px-2 py-0.5 animate-pulse">
+                      Reconnecting...
+                    </Badge>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
-          <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
+
+          {/* Right Section - Actions */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Members Button */}
+            <GroupMembersList 
+              groupId={groupId}
+              memberCount={actualMemberCount}
+            />
+
+            {/* DM Button */}
             <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={onGoHome || (() => {})}
-              className="flex items-center gap-1 sm:gap-2 hover:shadow-lg transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] text-xs sm:text-sm"
-            >
-              <Home className="w-3 h-3 sm:w-4 sm:h-4" />
-              <span className="hidden sm:inline">Home</span>
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleClearChat}
-              className="text-xs sm:text-sm"
-              title="Clear your chat view"
-            >
-              <Eraser className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-              <span className="hidden sm:inline">Clear</span>
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setShowSwitchDialog(true)} className="text-xs sm:text-sm">
-              <ArrowLeft className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-              <span className="hidden sm:inline">Leave Group</span>
-              <span className="sm:hidden">Leave</span>
-            </Button>
-            <Button 
-              variant="outline" 
+              variant="ghost" 
               size="sm" 
               onClick={() => setShowDMModal(true)} 
-              className="text-xs sm:text-sm"
+              className="h-9 w-9 p-0 rounded-full hover:bg-muted/50"
               title="Direct Messages"
             >
-              <MessageCircle className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-              <span className="hidden sm:inline">DM</span>
+              <MessageCircle className="w-4 h-4" />
+            </Button>
+
+            {/* More Options Menu */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-9 w-9 p-0 rounded-full hover:bg-muted/50"
+                  title="More options"
+                >
+                  <MoreVertical className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={handleClearChat}>
+                  <Eraser className="w-4 h-4 mr-2" />
+                  Clear Chat
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <Settings className="w-4 h-4 mr-2" />
+                  Group Settings
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <Share2 className="w-4 h-4 mr-2" />
+                  Share Group
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Leave Button */}
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setShowSwitchDialog(true)} 
+              className="h-9 px-3 text-sm font-medium border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
+            >
+              <ArrowLeft className="w-4 h-4 mr-1" />
+              Leave
             </Button>
           </div>
         </div>
@@ -810,6 +835,8 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
           onToolSelect={handleToolSelect}
           disabled={!userProfile || !isConnected}
           loading={isLoading || messagesLoading}
+          groupId={groupId}
+          groupName={groupName}
         />
       </div>
 
@@ -827,8 +854,9 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
         }}
       />
 
-      {/* Floating Voice Button - now with proper state integration */}
-      <FloatingVoiceButton groupId={groupId} groupName={groupName} />
+      {/* Voice Button moved to header - FloatingVoiceButton removed */}
+
+
 
       {/* DM Modal */}
       <DMModal 

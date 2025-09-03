@@ -6,6 +6,18 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  authState: {
+    isNewUser: boolean;
+    hasCompletedProfile: boolean;
+    shouldShowOnboarding: boolean;
+    isLoading: boolean;
+  };
+  setAuthState: React.Dispatch<React.SetStateAction<{
+    isNewUser: boolean;
+    hasCompletedProfile: boolean;
+    shouldShowOnboarding: boolean;
+    isLoading: boolean;
+  }>>;
   signUp: (email: string, password: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error?: any; success?: boolean }>;
   signOut: () => Promise<void>;
@@ -24,16 +36,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [authState, setAuthState] = useState({
+    isNewUser: false,
+    hasCompletedProfile: false,
+    shouldShowOnboarding: false,
+    isLoading: false,
+  });
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session) {
-        // Check email verification - block unconfirmed users
-        if (!session.user.email_confirmed_at) {
-          await supabase.auth.signOut();
-          return;
-        }
-        
+        // Allow all authenticated users to proceed - don't block unverified users
         setUser(session.user);
         setSession(session);
         setLoading(false);
@@ -41,6 +54,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setUser(null);
         setSession(null);
         setLoading(false);
+        setAuthState({
+          isNewUser: false,
+          hasCompletedProfile: false,
+          shouldShowOnboarding: false,
+          isLoading: false,
+        });
       }
     });
 
@@ -58,13 +77,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         }
 
         if (session) {
-          // Check email verification - block unconfirmed users
-          if (!session.user.email_confirmed_at) {
-            await supabase.auth.signOut();
-            setLoading(false);
-            return;
-          }
-          
+          // Allow all authenticated users to proceed - don't block unverified users
           setUser(session.user);
           setSession(session);
         }
@@ -93,41 +106,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     return { error };
   };
 
-  // Add auth stability check function
+  // Simplified auth stability check - just verify session exists
   const ensureAuthStability = async (): Promise<boolean> => {
     try {
-      // Check if we have a valid session
       const { data: { session }, error } = await supabase.auth.getSession();
-      
-      if (error) {
-        console.warn('Auth stability check failed:', error);
-        return false;
-      }
-      
-      if (!session) {
-        console.warn('No active session found');
-        return false;
-      }
-      
-      // Check if user has email confirmed
-      if (!session.user.email_confirmed_at) {
-        console.warn('User email not confirmed');
-        return false;
-      }
-      
-      // Verify the session is still valid by making a simple API call
-      // Check if user has a profile
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('user_id', session.user.id)
-        .single();
-
-      if (profileError || !profile) {
-        return false;
-      }
-
-      return true;
+      return !error && !!session;
     } catch (error) {
       console.error('Auth stability check error:', error);
       return false;
@@ -136,7 +119,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const signIn = async (email: string, password: string): Promise<{ error?: any; success?: boolean }> => {
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -145,19 +128,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         return { error: error.message };
       }
 
-      // Check email verification - block unconfirmed users
-      if (!data.user?.email_confirmed_at) {
-        await supabase.auth.signOut();
-        return { success: false, error: 'Please verify your email before signing in.' };
-      }
-
-      // Check auth stability after sign in
-      const isStable = await ensureAuthStability();
-      if (!isStable) {
-        await supabase.auth.signOut();
-        return { success: false, error: 'Authentication failed. Please try again.' };
-      }
-
+      // Allow all authenticated users to proceed - don't block unverified users
+      // The UI will handle showing verification prompts if needed
       return { success: true };
     } catch (error) {
       return { error: 'An unexpected error occurred.' };
@@ -175,7 +147,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     
     const { error } = await supabase.auth.resend({
       type: 'signup',
-      email,
+      email: email.toLowerCase().trim(),
       options: {
         emailRedirectTo: redirectUrl
       }
@@ -192,6 +164,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     user,
     session,
     loading,
+    authState,
+    setAuthState,
     signUp,
     signIn,
     signOut,

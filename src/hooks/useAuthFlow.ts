@@ -33,25 +33,25 @@ export const useAuthFlow = () => {
       return;
     }
 
-    checkUserStatus();
+    // Only check user status if user exists and is verified
+    if (user.email_confirmed_at) {
+      checkUserStatus();
+    } else {
+      // For unverified users, set a basic state
+      setAuthState({
+        isNewUser: false,
+        hasCompletedProfile: false,
+        shouldShowOnboarding: false,
+        isLoading: false
+      });
+    }
   }, [user, authLoading]);
 
   const checkUserStatus = async () => {
     if (!user?.id) return;
 
     try {
-      // CRITICAL: Check email confirmation FIRST - block everything until confirmed
-      if (!user.email_confirmed_at) {
-        console.log('User email not confirmed, showing email verification required state');
-        setAuthState({
-          isNewUser: false,
-          hasCompletedProfile: false,
-          shouldShowOnboarding: false,
-          isLoading: false
-        });
-        return;
-      }
-
+      // User is already verified at this point, so proceed with profile check
       console.log('User email confirmed at:', user.email_confirmed_at);
 
       // Check if user has a profile
@@ -63,6 +63,14 @@ export const useAuthFlow = () => {
 
       if (error && error.code !== 'PGRST116') {
         console.error('Error checking profile:', error);
+        // Don't send existing users to onboarding on database errors
+        // Instead, allow them to proceed and let the app handle the error gracefully
+        setAuthState({
+          isNewUser: false,
+          hasCompletedProfile: false,
+          shouldShowOnboarding: false,
+          isLoading: false
+        });
         return;
       }
 
@@ -105,6 +113,8 @@ export const useAuthFlow = () => {
       }
     } catch (error) {
       console.error('Error in checkUserStatus:', error);
+      // On any error, don't force users to onboarding
+      // Let them proceed and handle errors gracefully in the UI
       setAuthState({
         isNewUser: false,
         hasCompletedProfile: false,

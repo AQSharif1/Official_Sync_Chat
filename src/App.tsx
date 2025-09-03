@@ -4,9 +4,9 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/hooks/useAuth";
 import { VoiceRoomProvider } from "@/contexts/VoiceRoomContext";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 import { ScrollToTop } from "@/components/ScrollToTop";
@@ -32,12 +32,7 @@ const queryClient = new QueryClient({
 const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider
-        attribute="class"
-        defaultTheme="system"
-        enableSystem
-        disableTransitionOnChange
-      >
+      <ThemeProvider>
         <AuthProvider>
           <VoiceRoomProvider>
             <TooltipProvider>
@@ -49,6 +44,10 @@ const App = () => (
                 <ErrorBoundary>
                   <Routes>
                     <Route path="/" element={<Index />} />
+                    <Route path="/home" element={<Index />} />
+                    <Route path="/chat" element={<Index />} />
+                    <Route path="/profile" element={<Index />} />
+                    <Route path="/settings" element={<Index />} />
                     <Route path="/success" element={<SuccessPage />} />
                     <Route path="/auth/callback" element={<AuthCallback />} />
                     <Route path="/email-verification" element={<EmailVerification />} />

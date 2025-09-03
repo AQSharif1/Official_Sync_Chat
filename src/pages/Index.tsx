@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useAuthFlow } from '@/hooks/useAuthFlow';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { useIsMobile, useDeviceType } from '@/hooks/use-mobile';
 import { useAppData } from '@/hooks/useAppData';
 
 import { supabase } from '@/integrations/supabase/client';
@@ -12,17 +13,35 @@ import { OnboardingFlow } from '@/components/onboarding/OnboardingFlow';
 import { GroupMatchingFlow } from '@/components/group/GroupMatchingFlow';
 import { HomePage } from '@/components/home/HomePage';
 import { GroupChat } from '@/components/chat/GroupChat';
-import { AuthPage } from '@/components/auth/AuthPage';
+import { WelcomingLanding } from '@/components/landing/WelcomingLanding';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
-import { Button } from '@/components/ui/button';
 
 const Index = () => {
   const { user } = useAuth();
   const { authState } = useAuthFlow();
-  const { userProfile, currentGroup, isLoading: dataLoading, setCurrentGroup, error: dataError, hasTimedOut, retryDataLoad } = useAppData();
+  const { userProfile, currentGroup, isLoading: dataLoading, setCurrentGroup } = useAppData();
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const isMobile = useIsMobile();
-  const [activeTab, setActiveTab] = useState<'home' | 'chat' | 'profile' | 'settings'>('home');
+  const deviceType = useDeviceType();
+  
+  // Get current tab from URL path
+  const getCurrentTab = (): 'home' | 'chat' | 'profile' | 'settings' => {
+    const path = location.pathname;
+    if (path === '/chat') return 'chat';
+    if (path === '/profile') return 'profile';
+    if (path === '/settings') return 'settings';
+    return 'home'; // Default to home for '/' and '/home'
+  };
+  
+  const [activeTab, setActiveTab] = useState<'home' | 'chat' | 'profile' | 'settings'>(getCurrentTab());
+
+  // Sync activeTab with URL changes (for browser back/forward)
+  useEffect(() => {
+    const newTab = getCurrentTab();
+    setActiveTab(newTab);
+  }, [location.pathname]);
 
   const handleCompleteOnboarding = async () => {
     try {
@@ -55,109 +74,95 @@ const Index = () => {
         // Silent error handling for production
       }
     }
-    setActiveTab('chat');
+    navigate('/chat');
   };
 
   const handleBackToMatching = () => {
     setCurrentGroup(null);
-    setActiveTab('home');
+    navigate('/home');
   };
 
   const handleTabChange = (tab: 'home' | 'chat') => {
-    // Tab switched
-    setActiveTab(tab);
+    // Navigate to the appropriate route
+    if (tab === 'chat') {
+      navigate('/chat');
+    } else {
+      navigate('/home');
+    }
   };
 
   const handleProfileNavigation = () => {
-    setActiveTab('profile');
+    navigate('/profile');
   };
 
   const handleSettingsNavigation = () => {
-    setActiveTab('settings');
+    navigate('/settings');
   };
 
   // Authentication check
   if (!user) {
-    return <AuthPage />;
+    return <WelcomingLanding />;
   }
 
-  // ✅ Show email verification required message
+  // Show email verification prompt (non-blocking)
   if (!user.email_confirmed_at) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <div className="text-center space-y-6 max-w-md mx-auto">
           <div className="text-6xl mb-4">📧</div>
-          <h1 className="text-2xl font-bold text-foreground">Email Verification Required</h1>
+          <h1 className="text-2xl font-bold text-foreground">Verify Your Email</h1>
           <p className="text-muted-foreground">
-            Please check your email and click the verification link to continue. 
-            You won't be able to access the app until your email is confirmed.
+            Please check your email and click the verification link to access all features. 
+            You can still use the app, but some features may be limited.
           </p>
           <div className="space-y-3">
-            <Button 
+            <button 
               onClick={() => window.location.reload()}
-              className="w-full"
+              className="w-full px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
             >
               I've Verified My Email
-            </Button>
-            <Button 
-              variant="outline"
+            </button>
+            <button 
+              onClick={() => {
+                // Allow user to continue with limited access
+                window.location.href = '/';
+              }}
+              className="w-full px-4 py-2 border border-input bg-background rounded-md hover:bg-accent"
+            >
+              Continue Anyway
+            </button>
+            <button 
               onClick={() => supabase.auth.signOut()}
-              className="w-full"
+              className="w-full px-4 py-2 text-muted-foreground hover:text-foreground"
             >
               Sign Out
-            </Button>
+            </button>
           </div>
         </div>
       </div>
     );
   }
 
-  // ✅ Show spinner if we're still checking auth status
+  // Show spinner if we're still checking auth status
   if (authState.isLoading) {
-    return <LoadingSpinner size="lg" text="Checking your account..." />
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <div className="text-center space-y-6 max-w-md mx-auto">
+          <LoadingSpinner size="lg" text="Checking your account..." />
+        </div>
+      </div>
+    );
   }
 
-  // ✅ Show spinner if we're still trying to get the profile
+  // Show spinner if we're still trying to get the profile
   if (user && !userProfile && dataLoading) {
-    return <LoadingSpinner size="lg" text="Loading your profile..." />
-  }
-
-  // ✅ Show error UI if profile fetch failed or took too long
-  if ((user && !userProfile) && (hasTimedOut || dataError)) {
-    try {
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-background p-4">
-          <div className="text-center space-y-6 max-w-md mx-auto">
-            <div className="text-6xl mb-4">⚠️</div>
-            <h1 className="text-2xl font-bold text-foreground">Something went wrong</h1>
-            <p className="text-muted-foreground">
-              We couldn't load your profile. Please check your connection or try again.
-            </p>
-            <div className="space-y-3">
-              <Button 
-                onClick={() => window.location.reload()}
-                className="w-full"
-              >
-                Try Again
-              </Button>
-            </div>
-          </div>
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <div className="text-center space-y-6 max-w-md mx-auto">
+          <LoadingSpinner size="lg" text="Loading your profile..." />
         </div>
-      );
-    } catch (renderError) {
-      return (
-        <div className="flex flex-col items-center justify-center h-screen px-4 text-center text-sm text-gray-600">
-          <p>⚠️ Unexpected error occurred while rendering the error screen.</p>
-          <p className="mt-2">Please reload the page or try again later.</p>
-          <button
-            className="mt-4 px-4 py-2 bg-black text-white rounded"
-            onClick={() => window.location.reload()}
-          >
-            Reload
-          </button>
-        </div>
-      );
-    }
+      </div>
+    );
   }
 
   // New users or users without profiles need onboarding
@@ -227,7 +232,7 @@ const Index = () => {
               handleGroupMatched(groupId, groupData);
             } else {
               // No existing group, start matching
-              setActiveTab('chat');
+              navigate('/chat');
             }
           }}
           onViewProfile={handleProfileNavigation}
@@ -238,7 +243,7 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className={`min-h-screen bg-background ${deviceType === 'mobile' ? 'mobile-optimized' : ''}`}>
       {/* Navigation */}
       <NavigationBar 
         activeTab={activeTab === 'profile' || activeTab === 'settings' ? 'home' : activeTab}
@@ -246,8 +251,8 @@ const Index = () => {
         isMobile={isMobile}
       />
       
-      {/* Main Content */}
-      <div className={isMobile ? "pb-20" : "pt-14"}>
+                     {/* Main Content */}
+               <div className="pt-14">
         {renderMainContent()}
       </div>
     </div>
