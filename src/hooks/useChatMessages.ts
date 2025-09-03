@@ -27,8 +27,8 @@ export const useChatMessages = (groupId: string) => {
       
       console.log('Fetching messages for group:', groupId);
       
-      // Single optimized query with JOINs for better performance
-      const { data, error } = await supabase
+      // Fetch messages without profiles join (temporary fix)
+      const { data: messagesData, error: messagesError } = await supabase
         .from('chat_messages')
         .select(`
           id,
@@ -38,24 +38,45 @@ export const useChatMessages = (groupId: string) => {
           voice_audio_url,
           voice_transcription,
           created_at,
-          user_id,
-          profiles (
-            username,
-            mood_emoji
-          ),
-          message_reactions (
-            emoji,
-            user_id
-          )
+          user_id
         `)
         .eq('group_id', groupId)
         .order('created_at', { ascending: true })
-        .limit(50); // Limit chat history to last 50 messages for performance
+        .limit(50);
 
-      if (error) {
-        console.error('Error fetching messages:', error);
-        throw error;
+      if (messagesError) {
+        console.error('Error fetching messages:', messagesError);
+        throw messagesError;
       }
+
+      // Fetch profiles separately to avoid relationship issues
+      const userIds = [...new Set(messagesData?.map(msg => msg.user_id) || [])];
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('user_id, username, mood_emoji')
+        .in('user_id', userIds);
+
+      if (profilesError) {
+        console.warn('Error fetching profiles:', profilesError);
+      }
+
+      // Fetch message reactions separately
+      const messageIds = messagesData?.map(msg => msg.id) || [];
+      const { data: reactionsData, error: reactionsError } = await supabase
+        .from('message_reactions')
+        .select('message_id, emoji, user_id')
+        .in('message_id', messageIds);
+
+      if (reactionsError) {
+        console.warn('Error fetching reactions:', reactionsError);
+      }
+
+      // Combine the data
+      const data = messagesData?.map(msg => ({
+        ...msg,
+        profiles: profilesData?.find(p => p.user_id === msg.user_id) || null,
+        message_reactions: reactionsData?.filter(r => r.message_id === msg.id) || []
+      })) || [];
 
       console.log('Messages fetched:', data?.length || 0);
 
