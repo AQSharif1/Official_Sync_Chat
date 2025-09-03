@@ -322,6 +322,16 @@ const Index = () => {
               >
                 Try Again
               </Button>
+              <Button 
+                variant="outline"
+                onClick={async () => {
+                  await supabase.auth.signOut();
+                  window.location.href = '/';
+                }}
+                className="w-full"
+              >
+                Back to Login Page
+              </Button>
             </div>
           </div>
         </div>
