@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useAuthFlow } from '@/hooks/useAuthFlow';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -14,184 +14,11 @@ import { HomePage } from '@/components/home/HomePage';
 import { GroupChat } from '@/components/chat/GroupChat';
 import { AuthPage } from '@/components/auth/AuthPage';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
-import { Button } from '@/components/ui/button';
-
-// Component to handle auth loading with timeout
-const AuthLoadingWithTimeout = () => {
-  const [showTimeout, setShowTimeout] = useState(false);
-  const [timeRemaining, setTimeRemaining] = useState(10);
-
-  useEffect(() => {
-    // Start countdown timer
-    const timer = setInterval(() => {
-      setTimeRemaining(prev => {
-        if (prev <= 1) {
-          setShowTimeout(true);
-          clearInterval(timer);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    // Cleanup timer on unmount
-    return () => clearInterval(timer);
-  }, []);
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    window.location.href = '/';
-  };
-
-  if (showTimeout) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <div className="text-center space-y-6 max-w-md mx-auto">
-          <div className="text-6xl mb-4">⚠️</div>
-          <h1 className="text-2xl font-bold text-foreground">Authentication Timeout</h1>
-          <p className="text-muted-foreground">
-            We're having trouble verifying your account. This might be due to a network issue or server problem.
-          </p>
-          <div className="space-y-3">
-            <Button 
-              onClick={handleSignOut}
-              className="w-full"
-            >
-              Return to Login
-            </Button>
-            <Button 
-              variant="outline"
-              onClick={() => window.location.reload()}
-              className="w-full"
-            >
-              Try Again
-            </Button>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            If this problem persists, please check your internet connection or try again later.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <div className="text-center space-y-6 max-w-md mx-auto">
-        <LoadingSpinner size="lg" text="Checking your account..." />
-        <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            If this takes longer than {timeRemaining} seconds, we'll redirect you back to login.
-          </p>
-          <Button 
-            onClick={() => window.location.reload()}
-            className="w-full"
-          >
-            Refresh Page
-          </Button>
-          <Button 
-            variant="outline"
-            onClick={handleSignOut}
-            className="w-full"
-          >
-            Sign Out
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Component to handle profile loading with timeout
-const ProfileLoadingWithTimeout = () => {
-  const [showTimeout, setShowTimeout] = useState(false);
-  const [timeRemaining, setTimeRemaining] = useState(10);
-
-  useEffect(() => {
-    // Start countdown timer
-    const timer = setInterval(() => {
-      setTimeRemaining(prev => {
-        if (prev <= 1) {
-          setShowTimeout(true);
-          clearInterval(timer);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    // Cleanup timer on unmount
-    return () => clearInterval(timer);
-  }, []);
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    window.location.href = '/';
-  };
-
-  if (showTimeout) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <div className="text-center space-y-6 max-w-md mx-auto">
-          <div className="text-6xl mb-4">⚠️</div>
-          <h1 className="text-2xl font-bold text-foreground">Profile Loading Timeout</h1>
-          <p className="text-muted-foreground">
-            We're having trouble loading your profile. This might be due to a network issue or server problem.
-          </p>
-          <div className="space-y-3">
-            <Button 
-              onClick={handleSignOut}
-              className="w-full"
-            >
-              Return to Login
-            </Button>
-            <Button 
-              variant="outline"
-              onClick={() => window.location.reload()}
-              className="w-full"
-            >
-              Try Again
-            </Button>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            If this problem persists, please check your internet connection or try again later.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <div className="text-center space-y-6 max-w-md mx-auto">
-        <LoadingSpinner size="lg" text="Loading your profile..." />
-        <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            If this takes longer than {timeRemaining} seconds, we'll redirect you back to login.
-          </p>
-          <Button 
-            onClick={() => window.location.reload()}
-            className="w-full"
-          >
-            Refresh Page
-          </Button>
-          <Button 
-            variant="outline"
-            onClick={handleSignOut}
-            className="w-full"
-          >
-            Sign Out
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 const Index = () => {
   const { user } = useAuth();
   const { authState } = useAuthFlow();
-  const { userProfile, currentGroup, isLoading: dataLoading, setCurrentGroup, error: dataError, hasTimedOut } = useAppData();
+  const { userProfile, currentGroup, isLoading: dataLoading, setCurrentGroup } = useAppData();
 
   const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState<'home' | 'chat' | 'profile' | 'settings'>('home');
@@ -253,7 +80,7 @@ const Index = () => {
     return <AuthPage />;
   }
 
-  // ✅ Show email verification prompt (non-blocking)
+  // Show email verification prompt (non-blocking)
   if (!user.email_confirmed_at) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
@@ -265,91 +92,53 @@ const Index = () => {
             You can still use the app, but some features may be limited.
           </p>
           <div className="space-y-3">
-            <Button 
+            <button 
               onClick={() => window.location.reload()}
-              className="w-full"
+              className="w-full px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
             >
               I've Verified My Email
-            </Button>
-            <Button 
-              variant="outline"
+            </button>
+            <button 
               onClick={() => {
                 // Allow user to continue with limited access
                 window.location.href = '/';
               }}
-              className="w-full"
+              className="w-full px-4 py-2 border border-input bg-background rounded-md hover:bg-accent"
             >
               Continue Anyway
-            </Button>
-            <Button 
-              variant="ghost"
+            </button>
+            <button 
               onClick={() => supabase.auth.signOut()}
-              className="w-full text-muted-foreground"
+              className="w-full px-4 py-2 text-muted-foreground hover:text-foreground"
             >
               Sign Out
-            </Button>
+            </button>
           </div>
         </div>
       </div>
     );
   }
 
-  // ✅ Show spinner if we're still checking auth status with escape route and timeout
+  // Show spinner if we're still checking auth status
   if (authState.isLoading) {
-    return <AuthLoadingWithTimeout />;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <div className="text-center space-y-6 max-w-md mx-auto">
+          <LoadingSpinner size="lg" text="Checking your account..." />
+        </div>
+      </div>
+    );
   }
 
-  // ✅ Show spinner if we're still trying to get the profile with timeout
+  // Show spinner if we're still trying to get the profile
   if (user && !userProfile && dataLoading) {
-    return <ProfileLoadingWithTimeout />;
-  }
-
-  // ✅ Show error UI if profile fetch failed or took too long
-  if ((user && !userProfile) && (hasTimedOut || dataError)) {
-    try {
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-background p-4">
-          <div className="text-center space-y-6 max-w-md mx-auto">
-            <div className="text-6xl mb-4">⚠️</div>
-            <h1 className="text-2xl font-bold text-foreground">Something went wrong</h1>
-            <p className="text-muted-foreground">
-              We couldn't load your profile. Please check your connection or try again.
-            </p>
-            <div className="space-y-3">
-              <Button 
-                onClick={() => window.location.reload()}
-                className="w-full"
-              >
-                Try Again
-              </Button>
-              <Button 
-                variant="outline"
-                onClick={async () => {
-                  await supabase.auth.signOut();
-                  window.location.href = '/';
-                }}
-                className="w-full"
-              >
-                Back to Login Page
-              </Button>
-            </div>
-          </div>
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <div className="text-center space-y-6 max-w-md mx-auto">
+          <LoadingSpinner size="lg" text="Loading your profile..." />
         </div>
-      );
-    } catch (renderError) {
-      return (
-        <div className="flex flex-col items-center justify-center h-screen px-4 text-center text-sm text-gray-600">
-          <p>⚠️ Unexpected error occurred while rendering the error screen.</p>
-          <p className="mt-2">Please reload the page or try again later.</p>
-          <button
-            className="mt-4 px-4 py-2 bg-black text-white rounded"
-            onClick={() => window.location.reload()}
-          >
-            Reload
-          </button>
-        </div>
-      );
-    }
+      </div>
+    );
   }
 
   // New users or users without profiles need onboarding
