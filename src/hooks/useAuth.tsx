@@ -118,20 +118,38 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   const signIn = async (email: string, password: string): Promise<{ error?: any; success?: boolean }> => {
+    console.log('🔍 DEBUG: useAuth.signIn called with:', { email, password: '***' });
+    
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      console.log('🔍 DEBUG: Calling supabase.auth.signInWithPassword...');
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
+      console.log('🔍 DEBUG: Supabase response:', { 
+        data: data ? 'SUCCESS' : 'NO_DATA', 
+        error: error ? error.message : 'NO_ERROR',
+        user: data?.user ? 'USER_EXISTS' : 'NO_USER',
+        session: data?.session ? 'SESSION_EXISTS' : 'NO_SESSION'
+      });
+
       if (error) {
+        console.log('🔍 DEBUG: Supabase error details:', {
+          message: error.message,
+          status: error.status,
+          name: error.name,
+          fullError: error
+        });
         return { error: error.message };
       }
 
+      console.log('🔍 DEBUG: Sign-in successful, returning success');
       // Allow all authenticated users to proceed - don't block unverified users
       // The UI will handle showing verification prompts if needed
       return { success: true };
     } catch (error) {
+      console.log('🔍 DEBUG: Catch block in useAuth.signIn:', error);
       return { error: 'An unexpected error occurred.' };
     }
   };
