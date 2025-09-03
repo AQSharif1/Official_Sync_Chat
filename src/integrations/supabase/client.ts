@@ -2,6 +2,10 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
+const url  = import.meta.env.VITE_SUPABASE_URL;
+const anon = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+
 // Use environment variables for security
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
