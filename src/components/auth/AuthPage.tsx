@@ -53,33 +53,24 @@ export const AuthPage = () => {
 
     setIsLoading(true);
     try {
-      // Check if email already exists using secure RPC function
-      const { data: emailExists, error: checkError } = await supabase.rpc('email_exists', {
-        check_email: formData.email.toLowerCase().trim()
-      });
-      
-      if (checkError) {
-        console.error('Error checking email availability:', checkError);
-        // If we can't check, proceed with signup and let Supabase handle it
-      } else if (emailExists === true) {
-        toast({
-          title: "Account already exists",
-          description: "This email is already registered. Please sign in instead.",
-          variant: "destructive",
-        });
-        setIsLoading(false);
-        return; // Stop here - don't create account or send confirmation email
-      }
-
-      // Proceed with signup if email is available
       const { error } = await signUp(formData.email, formData.password);
       
       if (error) {
-        toast({
-          title: "Sign up failed",
-          description: error.message || "An unexpected error occurred.",
-          variant: "destructive",
-        });
+        if (error.message?.includes('already registered') || 
+            error.message?.includes('already exists') ||
+            error.message?.includes('User already registered')) {
+          toast({
+            title: "Account already exists",
+            description: "This email is already registered. Please use the Sign In tab to log in to your existing account.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Sign up failed",
+            description: error.message || "An unexpected error occurred.",
+            variant: "destructive",
+          });
+        }
       } else {
         // Show success message and redirect to login
         setSignupEmail(formData.email);
@@ -110,10 +101,31 @@ export const AuthPage = () => {
     }
 
     setIsLoading(true);
+    
+    // DEBUG: Check Supabase client initialization
+    console.log('🔍 DEBUG: Starting sign-in process...');
+    console.log('🔍 DEBUG: Supabase client exists:', !!supabase);
+    console.log('🔍 DEBUG: Supabase auth exists:', !!supabase?.auth);
+    
+    // DEBUG: Check environment variables
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    console.log('🔍 DEBUG: Environment variables:');
+    console.log('  - VITE_SUPABASE_URL:', supabaseUrl ? 'SET' : 'MISSING');
+    console.log('  - VITE_SUPABASE_ANON_KEY:', supabaseKey ? 'SET' : 'MISSING');
+    
     try {
+      console.log('🔍 DEBUG: Calling signIn function...');
       const { error } = await signIn(formData.email, formData.password);
+      console.log('🔍 DEBUG: signIn result:', { error: error || 'SUCCESS' });
 
       if (error) {
+        console.log('🔍 DEBUG: Error details:', {
+          message: error.message,
+          type: typeof error,
+          fullError: error
+        });
+        
         if (error.message?.includes('email_not_confirmed')) {
           toast({
             title: "Email not confirmed",
@@ -134,6 +146,7 @@ export const AuthPage = () => {
           });
         }
       } else {
+        console.log('🔍 DEBUG: Sign-in successful!');
         toast({
           title: "Welcome back!",
           description: "Successfully signed in.",
@@ -142,6 +155,7 @@ export const AuthPage = () => {
         window.location.href = '/';
       }
     } catch (error) {
+      console.log('🔍 DEBUG: Catch block triggered:', error);
       toast({
         title: "Error",
         description: "Something went wrong. Please try again.",
