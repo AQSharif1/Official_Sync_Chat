@@ -5,14 +5,6 @@ import type { Database } from './types';
 const url  = import.meta.env.VITE_SUPABASE_URL;
 const anon = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-if (!url || !anon) {
-  // Fail fast so you notice missing envs after deploy
-  throw new Error('Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY');
-}
-
-export const supabase = createClient(url, anon, {
-  auth: { persistSession: true },
-});
 
 // Use environment variables for security
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
