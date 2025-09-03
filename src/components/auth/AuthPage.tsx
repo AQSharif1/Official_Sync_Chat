@@ -102,26 +102,11 @@ export const AuthPage = () => {
       return;
     }
 
-    // Check Supabase connection
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-    
-    if (!supabaseUrl || !supabaseKey) {
-      toast({
-        title: "Configuration Error",
-        description: "Supabase is not properly configured. Please contact support.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setIsLoading(true);
-    
     try {
       const { error } = await signIn(formData.email, formData.password);
 
       if (error) {
-        
         if (error.message?.includes('email_not_confirmed')) {
           toast({
             title: "Email not confirmed",
