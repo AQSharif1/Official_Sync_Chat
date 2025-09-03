@@ -23,6 +23,8 @@ export const AuthPage = () => {
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
   const [showForgotPassword, setShowForgotPassword] = useState(false);
 
+
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -100,31 +102,25 @@ export const AuthPage = () => {
       return;
     }
 
-    setIsLoading(true);
-    
-    // DEBUG: Check Supabase client initialization
-    console.log('🔍 DEBUG: Starting sign-in process...');
-    console.log('🔍 DEBUG: Supabase client exists:', !!supabase);
-    console.log('🔍 DEBUG: Supabase auth exists:', !!supabase?.auth);
-    
-    // DEBUG: Check environment variables
+    // Check Supabase connection
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
     const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-    console.log('🔍 DEBUG: Environment variables:');
-    console.log('  - VITE_SUPABASE_URL:', supabaseUrl ? 'SET' : 'MISSING');
-    console.log('  - VITE_SUPABASE_ANON_KEY:', supabaseKey ? 'SET' : 'MISSING');
+    
+    if (!supabaseUrl || !supabaseKey) {
+      toast({
+        title: "Configuration Error",
+        description: "Supabase is not properly configured. Please contact support.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
     
     try {
-      console.log('🔍 DEBUG: Calling signIn function...');
       const { error } = await signIn(formData.email, formData.password);
-      console.log('🔍 DEBUG: signIn result:', { error: error || 'SUCCESS' });
 
       if (error) {
-        console.log('🔍 DEBUG: Error details:', {
-          message: error.message,
-          type: typeof error,
-          fullError: error
-        });
         
         if (error.message?.includes('email_not_confirmed')) {
           toast({
@@ -146,7 +142,6 @@ export const AuthPage = () => {
           });
         }
       } else {
-        console.log('🔍 DEBUG: Sign-in successful!');
         toast({
           title: "Welcome back!",
           description: "Successfully signed in.",
@@ -155,7 +150,6 @@ export const AuthPage = () => {
         window.location.href = '/';
       }
     } catch (error) {
-      console.log('🔍 DEBUG: Catch block triggered:', error);
       toast({
         title: "Error",
         description: "Something went wrong. Please try again.",
