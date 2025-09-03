@@ -145,56 +145,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const resendVerification = async (email: string) => {
     const redirectUrl = `${window.location.origin}/auth/callback`;
     
-    // Check if user with this email is already confirmed using RPC function
-    try {
-      const { data: emailExists, error: checkError } = await supabase.rpc('email_exists', {
-        check_email: email.toLowerCase().trim()
-      });
-      
-      if (!checkError && emailExists === true) {
-        // Email exists, now check if it's confirmed by trying to resend
-        // If the user is already confirmed, Supabase will return an appropriate error
-        const { error: resendError } = await supabase.auth.resend({
-          type: 'signup',
-          email: email.toLowerCase().trim(),
-          options: {
-            emailRedirectTo: redirectUrl
-          }
-        });
-        
-        // Check if the error indicates the user is already confirmed
-        if (resendError && (
-          resendError.message?.includes('already confirmed') ||
-          resendError.message?.includes('already verified') ||
-          resendError.message?.includes('email_confirmed_at')
-        )) {
-          return { 
-            error: { 
-              message: 'Your email is already verified. You can sign in normally.' 
-            } 
-          };
-        }
-        
-        // If no specific "already confirmed" error, return the original error
-        return { error: resendError };
-      } else if (!checkError && emailExists === false) {
-        // Email doesn't exist, proceed with normal resend
-        const { error } = await supabase.auth.resend({
-          type: 'signup',
-          email: email.toLowerCase().trim(),
-          options: {
-            emailRedirectTo: redirectUrl
-          }
-        });
-        
-        return { error };
-      }
-    } catch (error) {
-      // If RPC function fails, fall back to direct resend
-      console.log('RPC check failed, proceeding with direct resend');
-    }
-    
-    // Fallback: direct resend without checking
     const { error } = await supabase.auth.resend({
       type: 'signup',
       email: email.toLowerCase().trim(),

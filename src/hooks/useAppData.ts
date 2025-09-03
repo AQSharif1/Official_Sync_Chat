@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -27,111 +27,47 @@ interface GroupData {
   created_at: string;
 }
 
-interface AppData {
-  userProfile: UserProfile | null;
-  currentGroup: GroupData | null;
-  isLoading: boolean;
-  error: string | null;
-  hasTimedOut: boolean;
-}
-
-const INITIAL_STATE: AppData = {
-  userProfile: null,
-  currentGroup: null,
-  isLoading: false,
-  error: null,
-  hasTimedOut: false,
-};
-
-// Timeout wrapper to prevent infinite loading
-const fetchWithTimeout = async <T>(
-  promise: Promise<T>, 
-  timeout: number = 10000
-): Promise<T> => {
-  const timeoutPromise = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error('Request timeout')), timeout)
-  );
-  return Promise.race([promise, timeoutPromise]);
-};
-
-/**
- * Centralized app data management hook with timeout protection
- * Prevents infinite loading states when database queries fail
- */
 export const useAppData = () => {
   const { user } = useAuth();
-  const [appData, setAppData] = useState<AppData>(INITIAL_STATE);
-  const refreshDataRef = useRef<() => Promise<void>>();
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [currentGroup, setCurrentGroup] = useState<GroupData | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Update loading state
-  const setLoading = useCallback((loading: boolean) => {
-    setAppData(prev => ({ ...prev, isLoading: loading }));
-  }, []);
-
-  // Update error state
-  const setError = useCallback((error: string | null) => {
-    setAppData(prev => ({ ...prev, error, hasTimedOut: false }));
-  }, []);
-
-  // Update timeout state
-  const setTimeoutState = useCallback((hasTimedOut: boolean) => {
-    setAppData(prev => ({ ...prev, hasTimedOut }));
-  }, []);
-
-  // Fetch user profile with timeout protection
   const fetchUserProfile = useCallback(async () => {
     if (!user?.id) return null;
 
     try {
-      // Don't set loading state here - let refreshData handle it
+      setIsLoading(true);
       setError(null);
-      setTimeoutState(false);
 
-      const profilePromise = supabase
+      const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('user_id', user.id)
         .maybeSingle();
 
-      const { data, error } = await fetchWithTimeout(profilePromise, 10000);
+      if (error) throw error;
 
-      if (error) {
-        throw error;
-      }
-
-      setAppData(prev => ({ ...prev, userProfile: data }));
+      setUserProfile(data);
       return data;
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error fetching user profile:', error);
-      
-      // Don't retry on RLS/permission errors
-      if (error.message?.includes('permission denied') || 
-          error.message?.includes('row-level security') ||
-          error.message?.includes('RLS')) {
-        setError('Authentication error. Please sign out and sign in again.');
-        setTimeoutState(true);
-      } else if (error.message === 'Request timeout') {
-        setError('Profile loading timed out. Please refresh the page.');
-        setTimeoutState(true);
-      } else {
-        setError('Failed to load profile. Please try again.');
-      }
-      
+      setError('Failed to load profile');
       return null;
+    } finally {
+      setIsLoading(false);
     }
-    // Don't set loading to false here - let refreshData handle it
-  }, [user?.id, setError, setTimeoutState]);
+  }, [user?.id]);
 
-  // Fetch current group with timeout protection
   const fetchCurrentGroup = useCallback(async () => {
     if (!user?.id) return null;
 
     try {
-      // Don't set loading state here - let refreshData handle it
+      setIsLoading(true);
       setError(null);
-      setTimeoutState(false);
 
-      const groupPromise = supabase
+      const { data: memberData, error: memberError } = await supabase
         .from('group_members')
         .select(`
           group_id,
@@ -150,42 +86,25 @@ export const useAppData = () => {
         .limit(1)
         .maybeSingle();
 
-      const { data: memberData, error: memberError } = await fetchWithTimeout(groupPromise, 10000);
-
-      if (memberError) {
-        throw memberError;
-      }
+      if (memberError) throw memberError;
 
       const groupData = memberData?.groups as GroupData | null;
-      setAppData(prev => ({ ...prev, currentGroup: groupData }));
+      setCurrentGroup(groupData);
       return groupData;
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error fetching current group:', error);
-      
-      // Don't retry on RLS/permission errors
-      if (error.message?.includes('permission denied') || 
-          error.message?.includes('row-level security') ||
-          error.message?.includes('RLS')) {
-        setError('Authentication error. Please sign out and sign in again.');
-        setTimeoutState(true);
-      } else if (error.message === 'Request timeout') {
-        setError('Group data loading timed out. Please refresh the page.');
-        setTimeoutState(true);
-      } else {
-        setError('Failed to load group data. Please try again.');
-      }
-      
+      setError('Failed to load group data');
       return null;
+    } finally {
+      setIsLoading(false);
     }
-    // Don't set loading to false here - let refreshData handle it
-  }, [user?.id, setError, setTimeoutState]);
+  }, [user?.id]);
 
-  // Update user profile
   const updateUserProfile = useCallback(async (updates: Partial<UserProfile>) => {
-    if (!user?.id || !appData.userProfile) return false;
+    if (!user?.id || !userProfile) return false;
 
     try {
-      setLoading(true);
+      setIsLoading(true);
       setError(null);
 
       const { error } = await supabase
@@ -195,118 +114,71 @@ export const useAppData = () => {
 
       if (error) throw error;
 
-      setAppData(prev => ({
-        ...prev,
-        userProfile: prev.userProfile ? { ...prev.userProfile, ...updates } : null
-      }));
-
+      setUserProfile(prev => prev ? { ...prev, ...updates } : null);
       return true;
     } catch (error) {
       console.error('Error updating user profile:', error);
       setError('Failed to update profile');
       return false;
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
-  }, [user?.id, appData.userProfile, setLoading, setError]);
+  }, [user?.id, userProfile]);
 
-  // Set current group (for when user joins/switches groups)
-  const setCurrentGroup = useCallback((group: GroupData | null) => {
-    setAppData(prev => ({ ...prev, currentGroup: group }));
-  }, []);
-
-  // Clear all data (for logout)
   const clearData = useCallback(() => {
-    setAppData(INITIAL_STATE);
+    setUserProfile(null);
+    setCurrentGroup(null);
+    setError(null);
   }, []);
 
-  // Refresh all data with retry logic
-  const refreshData = useCallback(async (retryCount = 0) => {
+  const refreshData = useCallback(async () => {
     if (!user?.id) return;
 
-    const maxRetries = 3;
-    const baseDelay = 1000; // 1 second
-
     try {
-      setLoading(true);
+      setIsLoading(true);
       setError(null);
-      setTimeoutState(false);
 
-      await Promise.allSettled([
+      await Promise.all([
         fetchUserProfile(),
         fetchCurrentGroup()
       ]);
-      
     } catch (error) {
-      console.error(`Data refresh attempt ${retryCount + 1} failed:`, error);
-      
-      if (retryCount < maxRetries) {
-        // Exponential backoff retry
-        const delay = baseDelay * Math.pow(2, retryCount);
-        console.log(`Retrying in ${delay}ms... (attempt ${retryCount + 1}/${maxRetries})`);
-        
-        setTimeout(() => {
-          refreshData(retryCount + 1);
-        }, delay);
-      } else {
-        // Final failure - show error to user
-        setError('Failed to load data after multiple attempts. Please refresh the page.');
-        setTimeoutState(true);
-      }
+      console.error('Error refreshing data:', error);
+      setError('Failed to load data');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
-  }, [user?.id, fetchUserProfile, fetchCurrentGroup, setLoading, setError, setTimeoutState]);
+  }, [user?.id, fetchUserProfile, fetchCurrentGroup]);
 
-  // Manual retry function for user-initiated retries
-  const retryDataLoad = useCallback(() => {
-    if (user?.id) {
-      refreshData(0);
-    }
-  }, [user?.id, refreshData]);
-
-  // Auto-fetch data when user changes
   useEffect(() => {
     if (user?.id) {
-      // Store the current refreshData function in ref to prevent infinite loops
-      refreshDataRef.current = refreshData;
       refreshData();
     } else {
       clearData();
     }
-  }, [user?.id, clearData]); // Remove refreshData from dependencies
+  }, [user?.id, refreshData, clearData]);
 
-  // Listen for onboarding completion events
   useEffect(() => {
     const handleOnboardingComplete = () => {
-      console.log('🔄 Onboarding completed, refreshing app data...');
       setTimeout(() => {
-        // Use the ref to call the current refreshData function
-        if (refreshDataRef.current) {
-          refreshDataRef.current();
-        }
-      }, 2000); // Give database time to be consistent
+        refreshData();
+      }, 2000);
     };
 
     window.addEventListener('onboarding:complete', handleOnboardingComplete);
     return () => window.removeEventListener('onboarding:complete', handleOnboardingComplete);
-  }, []); // Remove refreshData from dependencies
+  }, [refreshData]);
 
   return {
-    // Data
-    userProfile: appData.userProfile,
-    currentGroup: appData.currentGroup,
-    isLoading: appData.isLoading,
-    error: appData.error,
-    hasTimedOut: appData.hasTimedOut,
-
-    // Actions
+    userProfile,
+    currentGroup,
+    isLoading,
+    error,
     fetchUserProfile,
     fetchCurrentGroup,
     updateUserProfile,
     setCurrentGroup,
     clearData,
     refreshData,
-    retryDataLoad,
   };
 };
