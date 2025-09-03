@@ -83,7 +83,7 @@ export const useAppData = () => {
     if (!user?.id) return null;
 
     try {
-      setLoading(true);
+      // Don't set loading state here - let refreshData handle it
       setError(null);
       setTimeoutState(false);
 
@@ -95,7 +95,9 @@ export const useAppData = () => {
 
       const { data, error } = await fetchWithTimeout(profilePromise, 10000);
 
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
 
       setAppData(prev => ({ ...prev, userProfile: data }));
       return data;
@@ -116,17 +118,16 @@ export const useAppData = () => {
       }
       
       return null;
-    } finally {
-      setLoading(false);
     }
-  }, [user?.id, setLoading, setError, setTimeoutState]);
+    // Don't set loading to false here - let refreshData handle it
+  }, [user?.id, setError, setTimeoutState]);
 
   // Fetch current group with timeout protection
   const fetchCurrentGroup = useCallback(async () => {
     if (!user?.id) return null;
 
     try {
-      setLoading(true);
+      // Don't set loading state here - let refreshData handle it
       setError(null);
       setTimeoutState(false);
 
@@ -151,7 +152,9 @@ export const useAppData = () => {
 
       const { data: memberData, error: memberError } = await fetchWithTimeout(groupPromise, 10000);
 
-      if (memberError) throw memberError;
+      if (memberError) {
+        throw memberError;
+      }
 
       const groupData = memberData?.groups as GroupData | null;
       setAppData(prev => ({ ...prev, currentGroup: groupData }));
@@ -173,10 +176,9 @@ export const useAppData = () => {
       }
       
       return null;
-    } finally {
-      setLoading(false);
     }
-  }, [user?.id, setLoading, setError, setTimeoutState]);
+    // Don't set loading to false here - let refreshData handle it
+  }, [user?.id, setError, setTimeoutState]);
 
   // Update user profile
   const updateUserProfile = useCallback(async (updates: Partial<UserProfile>) => {
@@ -230,10 +232,11 @@ export const useAppData = () => {
       setError(null);
       setTimeoutState(false);
 
-      await Promise.all([
+      await Promise.allSettled([
         fetchUserProfile(),
         fetchCurrentGroup()
       ]);
+      
     } catch (error) {
       console.error(`Data refresh attempt ${retryCount + 1} failed:`, error);
       
