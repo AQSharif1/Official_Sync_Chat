@@ -63,11 +63,12 @@ export const useAuthFlow = () => {
 
       if (error && error.code !== 'PGRST116') {
         console.error('Error checking profile:', error);
-        // Set loading to false and allow user to proceed
+        // Don't send existing users to onboarding on database errors
+        // Instead, allow them to proceed and let the app handle the error gracefully
         setAuthState({
           isNewUser: false,
           hasCompletedProfile: false,
-          shouldShowOnboarding: true,
+          shouldShowOnboarding: false,
           isLoading: false
         });
         return;
@@ -112,7 +113,8 @@ export const useAuthFlow = () => {
       }
     } catch (error) {
       console.error('Error in checkUserStatus:', error);
-      // Ensure loading state is cleared on any error
+      // On any error, don't force users to onboarding
+      // Let them proceed and handle errors gracefully in the UI
       setAuthState({
         isNewUser: false,
         hasCompletedProfile: false,
