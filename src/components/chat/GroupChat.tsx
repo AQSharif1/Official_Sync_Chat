@@ -146,7 +146,7 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
         .from('group_members')
         .select(`
           user_id,
-          engagement_metrics (
+          user_engagement!inner(
             achievement_points
           )
         `)
@@ -154,7 +154,7 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
 
       if (memberData) {
         const totalKarma = memberData.reduce((sum, member: any) => {
-          const karma = member.engagement_metrics?.achievement_points || 0;
+          const karma = member.user_engagement?.achievement_points || 0;
           return sum + karma;
         }, 0);
         setGroupKarmaTotal(totalKarma);
@@ -659,6 +659,28 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
       <div className="flex flex-col h-[calc(100vh-4rem)] max-w-4xl mx-auto bg-background rounded-lg shadow-lg overflow-hidden">
         {/* Modern Chat Header */}
         <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-background to-muted/30 backdrop-blur-sm sticky top-0 z-10">
+          {/* Mobile Navigation - Left Section */}
+          <div className="flex items-center gap-2 md:hidden">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onBack}
+              className="p-2 hover:bg-muted/50"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </Button>
+            {onGoHome && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onGoHome}
+                className="p-2 hover:bg-muted/50"
+              >
+                <Home className="w-4 h-4" />
+              </Button>
+            )}
+          </div>
+
           {/* Left Section - Room Info */}
           <div className="flex items-center gap-3 min-w-0 flex-1">
             <div className="flex items-center gap-3 min-w-0">
@@ -688,6 +710,17 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
 
           {/* Right Section - Actions */}
           <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Home Button */}
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={onGoHome} 
+              className="h-9 w-9 p-0 rounded-full hover:bg-muted/50"
+              title="Go to Home"
+            >
+              <Home className="w-4 h-4" />
+            </Button>
+
             {/* Members Button */}
             <GroupMembersList 
               groupId={groupId}

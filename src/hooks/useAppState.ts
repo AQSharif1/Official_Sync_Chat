@@ -137,7 +137,7 @@ export const useAppState = () => {
   };
 
   const loadRecentMessages = async (groupId: string): Promise<ChatMessage[]> => {
-    // Get recent messages (last 50)
+    // Get recent messages with proper JOIN to profiles table
     const { data: messagesData, error: messagesError } = await supabase
       .from('chat_messages')
       .select(`
@@ -148,7 +148,14 @@ export const useAppState = () => {
         voice_audio_url,
         voice_transcription,
         created_at,
-        user_id
+        user_id,
+        profiles!inner(
+          user_id,
+          username,
+          full_name,
+          avatar_url,
+          mood_emoji
+        )
       `)
       .eq('group_id', groupId)
       .order('created_at', { ascending: false })
@@ -158,32 +165,25 @@ export const useAppState = () => {
 
     if (!messagesData || messagesData.length === 0) return [];
 
-    // Get user profiles for messages
-    const userIds = [...new Set(messagesData.map(msg => msg.user_id))];
-    const { data: profilesData } = await supabase
-      .from('profiles')
-      .select('user_id, username')
-      .in('user_id', userIds);
-
-    const profilesLookup = profilesData?.reduce((acc, profile) => {
-      acc[profile.user_id] = profile.username;
-      return acc;
-    }, {} as Record<string, string>) || {};
-
     // Transform messages and reverse to chronological order
     return messagesData
-      .map(msg => ({
-        id: msg.id,
-        content: msg.content,
-        messageType: msg.message_type as 'text' | 'gif' | 'voice',
-        gifUrl: msg.gif_url,
-        voiceAudioUrl: msg.voice_audio_url,
-        voiceTranscription: msg.voice_transcription,
-        username: profilesLookup[msg.user_id] || 'Unknown User',
-        timestamp: new Date(msg.created_at),
-        userId: msg.user_id,
-        reactions: []
-      }))
+      .map(msg => {
+        const profile = msg.profiles;
+        const displayName = profile?.full_name || profile?.username || 'Unknown User';
+        
+        return {
+          id: msg.id,
+          content: msg.content,
+          messageType: msg.message_type as 'text' | 'gif' | 'voice',
+          gifUrl: msg.gif_url,
+          voiceAudioUrl: msg.voice_audio_url,
+          voiceTranscription: msg.voice_transcription,
+          username: displayName,
+          timestamp: new Date(msg.created_at),
+          userId: msg.user_id,
+          reactions: []
+        };
+      })
       .reverse();
   };
 

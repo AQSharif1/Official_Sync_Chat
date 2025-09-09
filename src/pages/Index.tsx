@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useAuthFlow } from '@/hooks/useAuthFlow';
 import { useIsMobile, useDeviceType } from '@/hooks/use-mobile';
 import { useAppData } from '@/hooks/useAppData';
+import { useBrowserBackButton } from '@/hooks/useBrowserBackButton';
 
 import { supabase } from '@/integrations/supabase/client';
 import { NavigationBar } from '@/components/navigation/NavigationBar';
@@ -25,6 +26,20 @@ const Index = () => {
 
   const isMobile = useIsMobile();
   const deviceType = useDeviceType();
+  
+  // Browser back button handling
+  const { handleBack } = useBrowserBackButton({
+    onBack: () => {
+      // Custom back behavior - navigate to home if at root
+      if (location.pathname === '/' || location.pathname === '/home') {
+        // Stay on home page
+        return;
+      }
+      // Otherwise navigate to home
+      navigate('/home');
+    },
+    fallbackRoute: '/home'
+  });
   
   // Get current tab from URL path
   const getCurrentTab = (): 'home' | 'chat' | 'profile' | 'settings' => {
@@ -181,8 +196,8 @@ const Index = () => {
               groupName={currentGroup.name}
               groupVibe={currentGroup.vibe_label}
               memberCount={currentGroup.current_members}
-              onBack={handleBackToMatching}
-              onGoHome={() => setActiveTab('home')}
+              onBack={handleBack}
+              onGoHome={() => navigate('/home')}
             />
           </div>
         );

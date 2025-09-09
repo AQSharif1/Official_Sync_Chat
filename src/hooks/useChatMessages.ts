@@ -20,14 +20,32 @@ export const useChatMessages = (groupId: string) => {
   const { user } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Message cache for performance optimization
+  const messageCache = useRef<Map<string, { data: ChatMessage[]; timestamp: number }>>(new Map());
+  const CACHE_DURATION = 30000; // 30 seconds
 
-  const fetchMessages = useCallback(async () => {
+  const fetchMessages = useCallback(async (forceRefresh = false) => {
     try {
       setLoading(true);
       
+      // Check cache first (unless force refresh)
+      const cacheKey = `${groupId}-${user?.id}`;
+      const now = Date.now();
+      
+      if (!forceRefresh && messageCache.current.has(cacheKey)) {
+        const cached = messageCache.current.get(cacheKey);
+        if (cached && (now - cached.timestamp) < CACHE_DURATION) {
+          console.log('Using cached messages for group:', groupId);
+          setMessages(cached.data);
+          setLoading(false);
+          return cached.data;
+        }
+      }
+      
       console.log('Fetching messages for group:', groupId);
       
-      // Fetch messages without profiles join (temporary fix)
+      // Fetch messages with proper JOIN to profiles table
       const { data: messagesData, error: messagesError } = await supabase
         .from('chat_messages')
         .select(`
@@ -38,7 +56,14 @@ export const useChatMessages = (groupId: string) => {
           voice_audio_url,
           voice_transcription,
           created_at,
-          user_id
+          user_id,
+          profiles!inner(
+            user_id,
+            username,
+            full_name,
+            avatar_url,
+            mood_emoji
+          )
         `)
         .eq('group_id', groupId)
         .order('created_at', { ascending: true })
@@ -47,17 +72,6 @@ export const useChatMessages = (groupId: string) => {
       if (messagesError) {
         console.error('Error fetching messages:', messagesError);
         throw messagesError;
-      }
-
-      // Fetch profiles separately to avoid relationship issues
-      const userIds = [...new Set(messagesData?.map(msg => msg.user_id) || [])];
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
-        .select('user_id, username, mood_emoji')
-        .in('user_id', userIds);
-
-      if (profilesError) {
-        console.warn('Error fetching profiles:', profilesError);
       }
 
       // Fetch message reactions separately
@@ -71,19 +85,12 @@ export const useChatMessages = (groupId: string) => {
         console.warn('Error fetching reactions:', reactionsError);
       }
 
-      // Combine the data
-      const data = messagesData?.map(msg => ({
-        ...msg,
-        profiles: profilesData?.find(p => p.user_id === msg.user_id) || null,
-        message_reactions: reactionsData?.filter(r => r.message_id === msg.id) || []
-      })) || [];
+      console.log('Messages fetched:', messagesData?.length || 0);
 
-      console.log('Messages fetched:', data?.length || 0);
-
-      // Transform to ChatMessage format with optimized data processing
-      const transformedMessages: ChatMessage[] = data?.map(msg => {
+      // Transform to ChatMessage format with proper profile data
+      const transformedMessages: ChatMessage[] = messagesData?.map(msg => {
         // Group reactions by emoji for this message
-        const messageReactions = msg.message_reactions || [];
+        const messageReactions = reactionsData?.filter(r => r.message_id === msg.id) || [];
         const reactionGroups = messageReactions.reduce((acc: any[], reaction) => {
           const existing = acc.find(r => r.emoji === reaction.emoji);
           if (existing) {
@@ -99,6 +106,10 @@ export const useChatMessages = (groupId: string) => {
           return acc;
         }, []);
 
+        // Use profile data from the JOIN
+        const profile = msg.profiles;
+        const displayName = profile?.full_name || profile?.username || 'Unknown User';
+
         return {
           id: msg.id,
           content: msg.content,
@@ -106,7 +117,7 @@ export const useChatMessages = (groupId: string) => {
           gifUrl: msg.gif_url,
           voiceAudioUrl: msg.voice_audio_url,
           voiceTranscription: msg.voice_transcription,
-          username: msg.profiles?.username || 'Unknown User',
+          username: displayName,
           timestamp: new Date(msg.created_at),
           userId: msg.user_id,
           reactions: reactionGroups
@@ -116,13 +127,19 @@ export const useChatMessages = (groupId: string) => {
       console.log('Transformed messages:', transformedMessages.length);
       setMessages(transformedMessages);
       
+      // Cache the results
+      messageCache.current.set(cacheKey, {
+        data: transformedMessages,
+        timestamp: now
+      });
+      
     } catch (error) {
       console.error('Error fetching messages:', error);
       toast.error('Failed to load messages');
     } finally {
       setLoading(false);
     }
-  }, [groupId]);
+  }, [groupId, user?.id]);
 
   const setupRealtimeSubscription = useCallback(() => {
     console.log('Setting up real-time subscription for group:', groupId);
@@ -138,10 +155,44 @@ export const useChatMessages = (groupId: string) => {
           table: 'chat_messages',
           filter: `group_id=eq.${groupId}`
         },
-        (payload) => {
+        async (payload) => {
           console.log('🆕 NEW MESSAGE RECEIVED:', payload.new);
-          // Refetch messages to get the new one with proper formatting
-          setTimeout(() => fetchMessages(), 100);
+          
+          // Get profile data for the new message
+          try {
+            const { data: profileData } = await supabase
+              .from('profiles')
+              .select('user_id, username, full_name, avatar_url, mood_emoji')
+              .eq('user_id', payload.new.user_id)
+              .single();
+
+            if (profileData) {
+              const profile = profileData;
+              const displayName = profile?.full_name || profile?.username || 'Unknown User';
+              
+              const newMessage: ChatMessage = {
+                id: payload.new.id,
+                content: payload.new.content,
+                messageType: payload.new.message_type as 'text' | 'gif' | 'voice',
+                gifUrl: payload.new.gif_url,
+                voiceAudioUrl: payload.new.voice_audio_url,
+                voiceTranscription: payload.new.voice_transcription,
+                username: displayName,
+                timestamp: new Date(payload.new.created_at),
+                userId: payload.new.user_id,
+                reactions: []
+              };
+
+              setMessages(prev => [...prev, newMessage]);
+            } else {
+              // Fallback to refetch if profile not found
+              setTimeout(() => fetchMessages(), 100);
+            }
+          } catch (error) {
+            console.error('Error fetching profile for new message:', error);
+            // Fallback to refetch
+            setTimeout(() => fetchMessages(), 100);
+          }
         }
       )
       .on(

@@ -25,6 +25,10 @@ export const usePWA = () => {
         navigator.serviceWorker.register('/sw.js')
           .then((registration) => {
             console.log('SW registered: ', registration);
+            // Unregister service worker if it's causing issues
+            if (registration.active) {
+              console.log('Service worker is active, monitoring for issues...');
+            }
           })
           .catch((registrationError) => {
             console.log('SW registration failed: ', registrationError);

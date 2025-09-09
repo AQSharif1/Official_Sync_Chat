@@ -125,7 +125,7 @@ export const useOnboardingCompletion = () => {
         
         const { data: profileResult, error: profileError } = await supabase
           .from('profiles')
-          .upsert(profileData, { onConflict: 'user_id' })
+          .upsert(profileData, { onConflict: 'profiles_user_id_key' })
           .select();
 
         console.log('💡 Profile upsert result:', { data: profileResult, error: profileError });

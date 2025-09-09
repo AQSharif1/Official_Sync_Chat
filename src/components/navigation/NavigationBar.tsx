@@ -65,8 +65,22 @@ export const NavigationBar = ({
       </Button>;
   };
   if (isMobile) {
-    // Bottom navigation removed - using URL-based navigation instead
-    return null;
+    // Mobile bottom navigation with Home/Exit buttons
+    return (
+      <nav className={`
+        fixed bottom-0 left-0 right-0 z-50
+        glass-card border-t border-border smooth-transition
+        ${className}
+      `}>
+        <div className="max-w-6xl mx-auto px-4 py-2">
+          <div className="flex justify-around items-center">
+            {navItems.map((item) => (
+              <NavButton key={item.id} item={item} />
+            ))}
+          </div>
+        </div>
+      </nav>
+    );
   }
 
   // Top navigation for tablet/desktop

@@ -92,42 +92,73 @@ export const useOptimizedRealtimeChat = ({
   const handleNewMessage = useCallback(async (payload: any) => {
     const messageData = payload.new;
     
-    // Create message object immediately
-    const newMessage: ChatMessage = {
-      id: messageData.id,
-      content: messageData.content,
-      messageType: messageData.message_type,
-      gifUrl: messageData.gif_url,
-      voiceAudioUrl: messageData.voice_audio_url,
-      voiceTranscription: messageData.voice_transcription,
-      username: 'Loading...', // Placeholder
-      timestamp: new Date(messageData.created_at),
-      userId: messageData.user_id,
-      reactions: []
-    };
+    // Get profile data for the new message
+    try {
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('user_id, username, full_name, avatar_url, mood_emoji')
+        .eq('user_id', messageData.user_id)
+        .single();
 
-    // Add to queue for batch processing
-    messageQueue.current.push(newMessage);
-    scheduleMessageProcessing();
-
-    // Show toast for messages from other users (non-blocking)
-    const currentUser = (await supabase.auth.getUser()).data.user;
-    if (currentUser && messageData.user_id !== currentUser.id) {
-      // Use cached profile if available for immediate toast
-      const cachedUsername = profileCache.current.get(messageData.user_id);
-      const displayName = cachedUsername || 'Someone';
+      const profile = profileData;
+      const displayName = profile?.full_name || profile?.username || 'Unknown User';
       
-      toast({
-        title: "New message",
-        description: `${displayName}: ${
-          newMessage.messageType === 'text' 
-            ? newMessage.content?.slice(0, 50) + (newMessage.content && newMessage.content.length > 50 ? '...' : '')
-            : newMessage.messageType === 'gif' 
-            ? 'Sent a GIF'
-            : 'Sent a voice message'
-        }`,
-        duration: 3000,
-      });
+      // Cache the profile for future use
+      if (profile) {
+        profileCache.current.set(messageData.user_id, displayName);
+      }
+      
+      // Create message object with real profile data
+      const newMessage: ChatMessage = {
+        id: messageData.id,
+        content: messageData.content,
+        messageType: messageData.message_type,
+        gifUrl: messageData.gif_url,
+        voiceAudioUrl: messageData.voice_audio_url,
+        voiceTranscription: messageData.voice_transcription,
+        username: displayName,
+        timestamp: new Date(messageData.created_at),
+        userId: messageData.user_id,
+        reactions: []
+      };
+
+      // Add to queue for batch processing
+      messageQueue.current.push(newMessage);
+      scheduleMessageProcessing();
+
+      // Show toast for messages from other users (non-blocking)
+      const currentUser = (await supabase.auth.getUser()).data.user;
+      if (currentUser && messageData.user_id !== currentUser.id) {
+        toast({
+          title: "New message",
+          description: `${displayName}: ${
+            newMessage.messageType === 'text' 
+              ? newMessage.content?.slice(0, 50) + (newMessage.content && newMessage.content.length > 50 ? '...' : '')
+              : newMessage.messageType === 'gif' 
+              ? 'Sent a GIF'
+              : 'Sent a voice message'
+          }`,
+          duration: 3000,
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching profile for new message:', error);
+      // Fallback with placeholder
+      const newMessage: ChatMessage = {
+        id: messageData.id,
+        content: messageData.content,
+        messageType: messageData.message_type,
+        gifUrl: messageData.gif_url,
+        voiceAudioUrl: messageData.voice_audio_url,
+        voiceTranscription: messageData.voice_transcription,
+        username: 'Loading...',
+        timestamp: new Date(messageData.created_at),
+        userId: messageData.user_id,
+        reactions: []
+      };
+      
+      messageQueue.current.push(newMessage);
+      scheduleMessageProcessing();
     }
   }, [scheduleMessageProcessing, toast]);
 

@@ -90,7 +90,7 @@ export const MessageBubble = ({
     const loadUserKarma = async () => {
       try {
         const { data, error } = await supabase
-          .from('engagement_metrics')
+          .from('user_engagement')
           .select('achievement_points')
           .eq('user_id', message.userId)
           .single();

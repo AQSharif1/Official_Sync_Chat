@@ -105,18 +105,29 @@ export const useGroupLifecycle = (groupId: string | null) => {
         };
       }
 
-      // Check for exit window
+      // Check for leave opportunity (new system)
+      const { data: hasLeaveOpportunity, error: opportunityError } = await supabase
+        .rpc('user_has_leave_opportunity', {
+          p_user_id: user.id,
+          p_group_id: groupId
+        });
+
+      if (opportunityError) {
+        console.error('Error checking leave opportunity:', opportunityError);
+      }
+
+      // Get exit request details for display
       let hasExitWindow = false;
       let exitWindowExpires = null;
       const { data: exitRequest } = await supabase
         .from('user_exit_requests')
-        .select('exit_window_expires')
+        .select('exit_window_expires, opportunity_type, exit_reason')
         .eq('group_id', groupId)
         .eq('user_id', user.id)
         .eq('is_processed', false)
         .single();
 
-      if (exitRequest) {
+      if (exitRequest && hasLeaveOpportunity) {
         hasExitWindow = true;
         exitWindowExpires = new Date(exitRequest.exit_window_expires);
       }
@@ -174,6 +185,35 @@ export const useGroupLifecycle = (groupId: string | null) => {
     if (!user || !groupId) return false;
 
     try {
+      // Check if user has leave opportunity
+      const { data: hasOpportunity, error: checkError } = await supabase
+        .rpc('user_has_leave_opportunity', {
+          p_user_id: user.id,
+          p_group_id: groupId
+        });
+
+      if (checkError) {
+        console.error('Error checking leave opportunity:', checkError);
+        return false;
+      }
+
+      if (!hasOpportunity) {
+        console.error('User does not have leave opportunity');
+        return false;
+      }
+
+      // Use the leave opportunity
+      const { data: opportunityUsed, error: useError } = await supabase
+        .rpc('use_leave_opportunity', {
+          p_user_id: user.id,
+          p_group_id: groupId
+        });
+
+      if (useError || !opportunityUsed) {
+        console.error('Error using leave opportunity:', useError);
+        return false;
+      }
+
       // Remove user from group
       await supabase
         .from('group_members')

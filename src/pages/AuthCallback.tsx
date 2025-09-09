@@ -77,13 +77,13 @@ export const AuthCallback = () => {
             setMessage('Email verified successfully! Redirecting to app...');
             // User has profile - go to main app
             setTimeout(() => {
-              navigate('/app', { replace: true });
+              navigate('/', { replace: true });
             }, 2000);
           } else {
             setMessage('Email verified! Redirecting to onboarding...');
-            // User needs to complete profile - go to onboarding
+            // User needs to complete profile - go to home (which handles onboarding)
             setTimeout(() => {
-              navigate('/onboarding', { replace: true });
+              navigate('/', { replace: true });
             }, 2000);
           }
           
