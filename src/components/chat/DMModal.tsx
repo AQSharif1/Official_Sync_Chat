@@ -114,8 +114,7 @@ export const DMModal = ({ open, onOpenChange, groupId }: DMModalProps) => {
       // Update user engagement to track DM usage
       const { error: engagementError } = await supabase.rpc('update_user_engagement', {
         p_user_id: user?.id,
-        p_activity_type: 'reconnect',
-        p_points: 1
+        p_activity_type: 'reconnect'
       });
 
       if (engagementError) {

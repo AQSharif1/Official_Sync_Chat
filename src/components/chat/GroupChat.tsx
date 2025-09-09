@@ -656,7 +656,7 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
           onClose={() => setShowInvitePanel(false)} 
         />
       )}
-      <div className="flex flex-col h-[calc(100vh-4rem)] max-w-4xl mx-auto bg-background rounded-lg shadow-lg overflow-hidden">
+      <div className="flex flex-col h-[calc(100vh-4rem)] max-w-6xl mx-auto bg-background rounded-lg shadow-lg overflow-hidden">
         {/* Modern Chat Header */}
         <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-background to-muted/30 backdrop-blur-sm sticky top-0 z-10">
           {/* Mobile Navigation - Left Section */}

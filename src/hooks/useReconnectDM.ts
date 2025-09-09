@@ -100,7 +100,7 @@ export const useReconnectDM = () => {
       }
       
       // Update user engagement (premium users have unlimited reconnects)
-      await supabase.rpc('update_user_engagement' as any, {
+      await supabase.rpc('update_user_engagement', {
         p_user_id: user.id,
         p_activity_type: 'reconnect'
       });

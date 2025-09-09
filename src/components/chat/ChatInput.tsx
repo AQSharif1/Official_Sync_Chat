@@ -80,7 +80,7 @@ export const ChatInput = ({ onSendMessage, onSendGif, onSendVoice, onToolSelect,
 
   return (
     <div className="border-t bg-background/80 backdrop-blur-sm p-4 sticky bottom-0">
-      <div className="flex gap-2 items-end max-w-4xl mx-auto">
+      <div className="flex gap-2 items-end max-w-6xl mx-auto">
         <div className="flex-1 space-y-2">
           <Textarea
             placeholder="text message"

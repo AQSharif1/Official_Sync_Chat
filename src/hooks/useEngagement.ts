@@ -20,6 +20,9 @@ export interface EngagementData {
   group_switches_used_today: number;
   reconnects_used_today: number;
   achievement_points: number;
+  karma_level: string;
+  total_karma_points: number;
+  monthly_karma_points: number;
   last_active: Date;
   is_premium: boolean;
 }
@@ -61,9 +64,12 @@ export const useEngagement = () => {
           tools_used_today: engagementData.tools_used_today,
           group_switches_used_today: engagementData.group_switches_used_today || 0,
           reconnects_used_today: engagementData.reconnects_used_today || 0,
-          achievement_points: engagementData.achievement_points,
+          achievement_points: engagementData.achievement_points || engagementData.total_karma_points || 0,
           last_active: new Date(engagementData.last_active),
-          is_premium: engagementData.is_premium || false
+          is_premium: engagementData.is_premium || false,
+          karma_level: engagementData.karma_level || 'Newcomer',
+          total_karma_points: engagementData.total_karma_points || 0,
+          monthly_karma_points: engagementData.monthly_karma_points || 0
         });
       }
     } catch (error) {
@@ -102,11 +108,11 @@ export const useEngagement = () => {
     }
   };
 
-  const trackActivity = async (activityType: 'message' | 'reaction' | 'tool' | 'group_switch' | 'reconnect') => {
+  const trackActivity = async (activityType: 'message' | 'reaction' | 'tool' | 'group_switch' | 'reconnect' | 'voice_note' | 'voice_participation' | 'game_win' | 'game_participation' | 'daily_login' | 'streak_bonus') => {
     if (!user) return;
 
     try {
-      const { error } = await supabase.rpc('update_user_engagement' as any, {
+      const { error } = await supabase.rpc('update_user_engagement', {
         p_user_id: user.id,
         p_activity_type: activityType
       });
@@ -124,11 +130,38 @@ export const useEngagement = () => {
     }
   };
 
+  const trackKarmaActivity = async (groupId: string, activityType: string, points: number = 1, description: string = '', multiplier: number = 1.0) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase.rpc('track_karma_activity', {
+        p_user_id: user.id,
+        p_group_id: groupId,
+        p_activity_type: activityType,
+        p_points: points,
+        p_description: description,
+        p_multiplier: multiplier
+      });
+
+      if (error) {
+        console.error('Error tracking karma activity:', error);
+        return;
+      }
+
+      // Refresh data after tracking
+      await fetchEngagementData();
+      await fetchAchievements();
+    } catch (error) {
+      console.error('Error tracking karma activity:', error);
+    }
+  };
+
   return {
     engagement,
     achievements,
     loading,
     trackActivity,
+    trackKarmaActivity,
     refresh: () => {
       fetchEngagementData();
       fetchAchievements();

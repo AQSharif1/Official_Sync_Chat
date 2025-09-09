@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { MessageSquare, Clock, Eye, EyeOff } from 'lucide-react';
+import { useEngagement } from '@/hooks/useEngagement';
 
 interface TruthLieStatement {
   id: string;
@@ -39,6 +40,7 @@ interface TruthLieGameProps {
 
 export const TruthLieGame = ({ game, currentUserId, currentUsername, onGuess }: TruthLieGameProps) => {
   const [timeLeft, setTimeLeft] = useState<string>('');
+  const { trackActivity } = useEngagement();
   
   const hasGuessed = game.guesses.some(guess => guess.userId === currentUserId);
   const userGuess = game.guesses.find(guess => guess.userId === currentUserId);
@@ -110,7 +112,13 @@ export const TruthLieGame = ({ game, currentUserId, currentUsername, onGuess }: 
                   isCorrectLie ? 'bg-red-100 border-red-300 dark:bg-red-950/50 dark:border-red-800' :
                   isWrongGuess ? 'bg-gray-100 border-gray-300 dark:bg-gray-800 dark:border-gray-600' : ''
                 }`}
-                onClick={() => !hasGuessed && !isRevealed && onGuess(game.id, statement.id)}
+                onClick={() => {
+                  if (!hasGuessed && !isRevealed) {
+                    onGuess(game.id, statement.id);
+                    // Track karma for game participation
+                    trackActivity('game_participation');
+                  }
+                }}
                 disabled={hasGuessed || isRevealed || isCreator}
               >
                 <div className="flex-1">

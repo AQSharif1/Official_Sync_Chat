@@ -38,11 +38,13 @@ export const ResponsiveModal = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={className}>
+      <DialogContent className={`max-w-2xl max-h-[90vh] overflow-y-auto ${className}`}>
         <VisuallyHidden>
           <DialogTitle>{title}</DialogTitle>
         </VisuallyHidden>
-        {children}
+        <div className="p-1">
+          {children}
+        </div>
       </DialogContent>
     </Dialog>
   );

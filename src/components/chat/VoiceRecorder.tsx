@@ -2,6 +2,7 @@ import { useState, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Mic, MicOff, Square, Play, Pause, Send, RotateCcw, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useEngagement } from '@/hooks/useEngagement';
 
 interface VoiceRecorderProps {
   onRecordingComplete: (audioBlob: Blob) => void;
@@ -20,6 +21,7 @@ export const VoiceRecorder = ({ onRecordingComplete, disabled }: VoiceRecorderPr
   const chunksRef = useRef<Blob[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const { toast } = useToast();
+  const { trackActivity } = useEngagement();
 
   const startRecording = useCallback(async () => {
     try {
@@ -116,12 +118,16 @@ export const VoiceRecorder = ({ onRecordingComplete, disabled }: VoiceRecorderPr
     if (recordedBlob) {
       onRecordingComplete(recordedBlob);
       resetRecording();
+      
+      // Track karma for voice note
+      trackActivity('voice_note');
+      
       toast({
         title: "Voice message sent!",
         description: "Your recording has been shared with the group.",
       });
     }
-  }, [recordedBlob, onRecordingComplete, toast]);
+  }, [recordedBlob, onRecordingComplete, toast, trackActivity]);
 
   const redoRecording = useCallback(() => {
     resetRecording();

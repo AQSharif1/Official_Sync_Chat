@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { RealtimeVoiceChat } from '@/utils/RealtimeAudio';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { useEngagement } from '@/hooks/useEngagement';
 
 // Types and interfaces
 interface VoiceParticipant {
@@ -137,6 +138,7 @@ const useDebounce = (func: Function, wait: number) => {
 export const VoiceRoomProvider: React.FC<VoiceRoomProviderProps> = ({ children }) => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { trackActivity } = useEngagement();
 
   // State
   const [state, setState] = useState<VoiceRoomState>({
@@ -375,6 +377,9 @@ export const VoiceRoomProvider: React.FC<VoiceRoomProviderProps> = ({ children }
             isConnecting: false,
             isCollapsed: false // Auto-expand when joining
           }));
+
+          // Track karma for voice participation
+          trackActivity('voice_participation');
 
           toast({
             title: "Voice Room Connected",

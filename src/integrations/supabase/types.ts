@@ -1090,6 +1090,17 @@ export type Database = {
         Args: { p_user_id: string; p_activity_type: string }
         Returns: undefined
       }
+      track_karma_activity: {
+        Args: { 
+          p_user_id: string; 
+          p_group_id: string; 
+          p_activity_type: string; 
+          p_points: number; 
+          p_description: string; 
+          p_multiplier: number 
+        }
+        Returns: undefined
+      }
       use_group_switch: {
         Args: { p_user_id: string }
         Returns: boolean

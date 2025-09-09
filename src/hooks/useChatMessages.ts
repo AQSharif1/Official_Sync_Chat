@@ -283,8 +283,9 @@ export const useChatMessages = (groupId: string) => {
           p_user_id: user.id,
           p_group_id: groupId,
           p_activity_type: 'message',
-          p_points: 2,
-          p_description: 'Sent a message'
+          p_points: 1,
+          p_description: 'Sent a message',
+          p_multiplier: 1.0
         });
       } catch (karmaError) {
         console.warn('Failed to track karma for message:', karmaError);
@@ -352,7 +353,8 @@ export const useChatMessages = (groupId: string) => {
               p_group_id: messageData.group_id,
               p_activity_type: 'reaction',
               p_points: 1,
-              p_description: 'Gave a reaction'
+              p_description: 'Gave a reaction',
+              p_multiplier: 1.0
             });
           } catch (karmaError) {
             console.warn('Failed to track karma for reaction:', karmaError);

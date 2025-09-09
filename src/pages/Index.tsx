@@ -258,7 +258,7 @@ const Index = () => {
   };
 
   return (
-    <div className={`min-h-screen bg-background ${deviceType === 'mobile' ? 'mobile-optimized' : ''}`}>
+    <div className={`min-h-screen bg-background ${deviceType === 'mobile' ? 'mobile-optimized' : deviceType === 'desktop' ? 'laptop-optimized' : ''}`}>
       {/* Navigation */}
       <NavigationBar 
         activeTab={activeTab === 'profile' || activeTab === 'settings' ? 'home' : activeTab}

@@ -84,13 +84,48 @@ export const NavigationBar = ({
   }
 
   // Top navigation for tablet/desktop
-  return <nav className={`
+  return (
+    <nav className={`
       fixed top-0 left-0 right-0 z-50
       glass-card border-b border-border smooth-transition
       ${className}
     `}>
-      <div className="max-w-6xl mx-auto px-4">
-        
+      <div className="max-w-6xl mx-auto px-4 py-3">
+        <div className="flex items-center justify-between">
+          {/* Left side - Logo/Brand */}
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                <MessageCircle className="h-5 w-5 text-primary-foreground" />
+              </div>
+              <span className="text-lg font-bold text-foreground">SyncChat</span>
+            </div>
+          </div>
+
+          {/* Center - Navigation Items */}
+          <div className="flex items-center gap-1">
+            {navItems.map((item) => (
+              <NavButton key={item.id} item={item} />
+            ))}
+          </div>
+
+          {/* Right side - User info and actions */}
+          <div className="flex items-center gap-3">
+            {user && (
+              <div className="flex items-center gap-2">
+                <div className="text-sm text-muted-foreground">
+                  {user.email?.split('@')[0]}
+                </div>
+                {achievements && achievements.length > 0 && (
+                  <Badge variant="secondary" className="text-xs">
+                    {achievements.length} achievements
+                  </Badge>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
-    </nav>;
+    </nav>
+  );
 };

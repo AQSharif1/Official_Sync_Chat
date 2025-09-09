@@ -177,7 +177,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onStartMatching, onViewProfi
 
   return (
     <div className={`min-h-screen bg-background p-4 ${className}`}>
-      <div className="max-w-2xl mx-auto space-y-6">
+      <div className="max-w-4xl mx-auto space-y-6">
         
         {/* Welcome Header */}
         <div className="text-center space-y-4 py-8">
@@ -225,7 +225,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onStartMatching, onViewProfi
         )}
 
         {/* Main Action Buttons */}
-        <div className="grid gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           
           {/* Enter/Join Chat */}
           <Card 

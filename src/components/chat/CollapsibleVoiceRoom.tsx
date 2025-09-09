@@ -88,7 +88,7 @@ export const CollapsibleVoiceRoom = ({ groupName }: CollapsibleVoiceRoomProps) =
   return (
     <Card className={cn(
       "fixed bottom-20 right-6 z-40 transition-all duration-300 shadow-xl border-2",
-      isCollapsed ? "w-80 h-16" : "w-96 h-[500px]",
+      isCollapsed ? "w-80 h-16" : "w-96 h-[500px] lg:w-[400px] lg:h-[600px]",
       isConnected ? "border-green-500" : "border-gray-300"
     )}>
       <CardHeader className="pb-2 cursor-pointer" onClick={toggleCollapse}>
