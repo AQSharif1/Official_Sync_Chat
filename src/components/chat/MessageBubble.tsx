@@ -93,7 +93,7 @@ export const MessageBubble = ({
           .from('user_engagement')
           .select('achievement_points')
           .eq('user_id', message.userId)
-          .single();
+          .maybeSingle();
 
         if (data && !error) {
           setUserKarma(data.achievement_points || 0);

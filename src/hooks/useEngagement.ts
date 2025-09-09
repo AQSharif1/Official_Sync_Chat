@@ -45,12 +45,12 @@ export const useEngagement = () => {
 
     try {
       const { data, error } = await supabase
-        .from('user_engagement' as any)
+        .from('engagement_metrics')
         .select('*')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
         console.error('Error fetching engagement:', error);
         return;
       }
@@ -70,6 +70,22 @@ export const useEngagement = () => {
           karma_level: engagementData.karma_level || 'Newcomer',
           total_karma_points: engagementData.total_karma_points || 0,
           monthly_karma_points: engagementData.monthly_karma_points || 0
+        });
+      } else {
+        // No engagement data found, set defaults
+        setEngagement({
+          daily_streak: 0,
+          messages_sent_today: 0,
+          reactions_given_today: 0,
+          tools_used_today: 0,
+          group_switches_used_today: 0,
+          reconnects_used_today: 0,
+          achievement_points: 0,
+          last_active: new Date(),
+          is_premium: false,
+          karma_level: 'Newcomer',
+          total_karma_points: 0,
+          monthly_karma_points: 0
         });
       }
     } catch (error) {

@@ -50,18 +50,16 @@ export const NavigationBar = ({
     const Icon = item.icon;
     return <Button variant={isActive ? "default" : "ghost"} size={isMobile ? "lg" : "sm"} onClick={() => handleTabChange(item.id)} className={`
           nav-item interactive-scale
-          ${isMobile ? 'flex-col h-auto py-3 px-4' : 'flex-row h-10'}
+          ${isMobile ? 'flex-col h-auto py-3 px-4' : 'flex-row h-10 px-4'}
           ${isActive ? 'bg-primary text-primary-foreground shadow-elegant' : 'hover:bg-muted/50'}
         `}>
         <div className="relative">
           <Icon className={`h-5 w-5 ${isMobile && isActive ? 'animate-scale-in' : ''}`} />
         </div>
         
-        {isMobile ? <span className={`text-xs font-medium ${isActive ? 'text-primary-foreground' : 'text-muted-foreground'}`}>
-            {item.label}
-          </span> : <span className="hidden md:inline text-sm font-medium">
-            {item.label}
-          </span>}
+        <span className={`text-sm font-medium ${isMobile ? (isActive ? 'text-primary-foreground' : 'text-muted-foreground') : 'ml-2'}`}>
+          {item.label}
+        </span>
       </Button>;
   };
   if (isMobile) {
@@ -83,7 +81,7 @@ export const NavigationBar = ({
     );
   }
 
-  // Top navigation for tablet/desktop
+  // Top navigation for laptop/desktop - similar to mobile but horizontal
   return (
     <nav className={`
       fixed top-0 left-0 right-0 z-50
@@ -102,8 +100,8 @@ export const NavigationBar = ({
             </div>
           </div>
 
-          {/* Center - Navigation Items */}
-          <div className="flex items-center gap-1">
+          {/* Center - Navigation Items (like mobile but horizontal) */}
+          <div className="flex items-center gap-2">
             {navItems.map((item) => (
               <NavButton key={item.id} item={item} />
             ))}

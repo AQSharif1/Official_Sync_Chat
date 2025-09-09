@@ -30,13 +30,8 @@ const Index = () => {
   // Browser back button handling
   const { handleBack } = useBrowserBackButton({
     onBack: () => {
-      // Custom back behavior - navigate to home if at root
-      if (location.pathname === '/' || location.pathname === '/home') {
-        // Stay on home page
-        return;
-      }
-      // Otherwise navigate to home
-      navigate('/home');
+      // Custom back behavior - always go to home tab
+      setActiveTab('home');
     },
     fallbackRoute: '/home'
   });

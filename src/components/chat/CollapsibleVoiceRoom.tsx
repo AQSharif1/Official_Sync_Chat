@@ -87,7 +87,11 @@ export const CollapsibleVoiceRoom = ({ groupName }: CollapsibleVoiceRoomProps) =
 
   return (
     <Card className={cn(
-      "fixed bottom-20 right-6 z-40 transition-all duration-300 shadow-xl border-2",
+      "fixed z-40 transition-all duration-300 shadow-xl border-2",
+      // Mobile: bottom right
+      "bottom-20 right-6",
+      // Laptop: top right, below navigation
+      "lg:top-20 lg:right-6 lg:bottom-auto",
       isCollapsed ? "w-80 h-16" : "w-96 h-[500px] lg:w-[400px] lg:h-[600px]",
       isConnected ? "border-green-500" : "border-gray-300"
     )}>

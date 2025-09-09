@@ -4,7 +4,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Users, ArrowLeft, Volume2, Trophy, Share2, Lightbulb, Home, Eraser, MessageCircle, MoreVertical, Settings } from 'lucide-react';
+import { Users, ArrowLeft, Volume2, Trophy, Share2, Lightbulb, Home, Eraser, MessageCircle, MoreVertical, Settings, RefreshCw } from 'lucide-react';
 import { GroupMembersList } from './GroupMembersList';
 import { ChatInput } from './ChatInput';
 import { GroupSwitchDialog } from './GroupSwitchDialog';
@@ -560,6 +560,11 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
     });
   };
 
+  const handleRefresh = () => {
+    // Refresh current page data without navigating away
+    window.location.reload();
+  };
+
   const renderActiveView = () => {
     if (!userProfile) return null;
 
@@ -710,6 +715,17 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
 
           {/* Right Section - Actions */}
           <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Refresh Button */}
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={handleRefresh} 
+              className="h-9 w-9 p-0 rounded-full hover:bg-muted/50"
+              title="Refresh Chat"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </Button>
+
             {/* Home Button */}
             <Button 
               variant="ghost" 
