@@ -1101,6 +1101,20 @@ export type Database = {
         }
         Returns: undefined
       }
+      get_group_user_karma_leaderboard: {
+        Args: { 
+          p_group_id: string; 
+          p_limit?: number; 
+          p_offset?: number 
+        }
+        Returns: {
+          user_id: string;
+          display_name: string;
+          avatar_url: string;
+          karma_points: number;
+          rank: number;
+        }[]
+      }
       use_group_switch: {
         Args: { p_user_id: string }
         Returns: boolean

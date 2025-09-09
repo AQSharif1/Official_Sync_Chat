@@ -69,18 +69,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   useEffect(() => {
     const checkInitialSession = async () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          setLoading(false);
-          return;
-        }
-
-        if (session) {
-          // Allow all authenticated users to proceed - don't block unverified users
-          setUser(session.user);
-          setSession(session);
-        }
+        // Always clear any existing session to force login
+        await supabase.auth.signOut();
         
         setLoading(false);
       } catch (error) {

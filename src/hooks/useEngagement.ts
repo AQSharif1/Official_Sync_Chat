@@ -45,12 +45,12 @@ export const useEngagement = () => {
 
     try {
       const { data, error } = await supabase
-        .from('engagement_metrics')
+        .from('user_engagement')
         .select('*')
         .eq('user_id', user.id)
         .maybeSingle();
 
-      if (error) {
+      if (error && error.code !== 'PGRST116') {
         console.error('Error fetching engagement:', error);
         return;
       }
@@ -172,12 +172,36 @@ export const useEngagement = () => {
     }
   };
 
+  // Get group leaderboard for karma points
+  const getGroupKarmaLeaderboard = async (groupId: string, limit: number = 20, offset: number = 0) => {
+    if (!user) return [];
+
+    try {
+      const { data, error } = await supabase.rpc('get_group_user_karma_leaderboard', {
+        p_group_id: groupId,
+        p_limit: limit,
+        p_offset: offset
+      });
+
+      if (error) {
+        console.error('Error fetching group leaderboard:', error);
+        return [];
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching group leaderboard:', error);
+      return [];
+    }
+  };
+
   return {
     engagement,
     achievements,
     loading,
     trackActivity,
     trackKarmaActivity,
+    getGroupKarmaLeaderboard,
     refresh: () => {
       fetchEngagementData();
       fetchAchievements();

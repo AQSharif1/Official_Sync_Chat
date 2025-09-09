@@ -4,7 +4,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Users, ArrowLeft, Volume2, Trophy, Share2, Lightbulb, Home, Eraser, MessageCircle, MoreVertical, Settings, RefreshCw } from 'lucide-react';
+import { Users, ArrowLeft, Trophy, Share2, Lightbulb, Home, Eraser, MessageCircle, MoreVertical, Settings, RefreshCw } from 'lucide-react';
 import { GroupMembersList } from './GroupMembersList';
 import { ChatInput } from './ChatInput';
 import { GroupSwitchDialog } from './GroupSwitchDialog';
@@ -410,6 +410,10 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
       case 'start-truthslie':
         handleStartGame('twoTruths');
         break;
+      case 'game':
+        // Show game picker - this will be handled by GameQuickPicker component
+        setActiveView('game-picker');
+        break;
     }
   };
 
@@ -508,8 +512,8 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
       });
 
       if (success) {
-        // Track engagement
-        trackActivity('message');
+        // Track karma for voice note with group ID
+        trackKarmaActivity(groupId, 'voice_note', 2, 'Sent voice message', 1.0);
         
         return true;
       } else {
@@ -631,6 +635,17 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
           />
         );
 
+      case 'game-picker':
+        return (
+          <GameQuickPicker 
+            onGameSelect={(gameType) => {
+              setActiveView(null);
+              handleToolSelect(gameType);
+            }}
+            disabled={false}
+          />
+        );
+
       default:
         return null;
     }
@@ -674,16 +689,6 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
             >
               <ArrowLeft className="w-4 h-4" />
             </Button>
-            {onGoHome && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onGoHome}
-                className="p-2 hover:bg-muted/50"
-              >
-                <Home className="w-4 h-4" />
-              </Button>
-            )}
           </div>
 
           {/* Left Section - Room Info */}
@@ -836,8 +841,24 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
             )}
 
             {/* Active Games Section - Moved to bottom */}
-            {(totPrompts.length > 0 || riddles.length > 0) && (
+            {(totPrompts.length > 0 || riddles.length > 0 || truthLieGames.length > 0) && (
               <div className="space-y-4 mt-6 pt-4 border-t">
+                {/* Two Truths and a Lie Games */}
+                {truthLieGames.filter(g => g.isActive).map(game => (
+                  <TruthLieGame
+                    key={game.id}
+                    game={game}
+                    currentUserId={user?.id || ''}
+                    currentUsername={userProfile?.username || 'Anonymous'}
+                    onGuess={(gameId, statementId) => {
+                      if (user?.id) {
+                        makeTruthLieGuess(gameId, statementId, user.id);
+                        trackActivity('game_participation');
+                      }
+                    }}
+                  />
+                ))}
+
                 {/* This or That Prompts */}
                 {totPrompts.filter(p => p.isActive).map(prompt => (
                   <ThisOrThat

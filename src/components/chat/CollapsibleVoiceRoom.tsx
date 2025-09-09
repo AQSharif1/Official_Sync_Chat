@@ -85,6 +85,20 @@ export const CollapsibleVoiceRoom = ({ groupName }: CollapsibleVoiceRoomProps) =
     return getSpeakingIndicator(participant);
   };
 
+  const getParticipantName = (participant: any) => {
+    const hasMicrophone = participant.hasMicrophone !== false; // Default to true for backward compatibility
+    return (
+      <div className="flex items-center gap-1">
+        <span className="text-sm font-medium">{participant.name}</span>
+        {!hasMicrophone && (
+          <span className="text-xs text-gray-500 bg-gray-100 dark:bg-gray-700 px-1 rounded">
+            (listening)
+          </span>
+        )}
+      </div>
+    );
+  };
+
   return (
     <Card className={cn(
       "fixed z-40 transition-all duration-300 shadow-xl border-2",
@@ -188,7 +202,9 @@ export const CollapsibleVoiceRoom = ({ groupName }: CollapsibleVoiceRoomProps) =
                       <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full animate-pulse" />
                     )}
                   </div>
-                  <span className="text-sm font-medium flex-1 truncate">{participant.name}</span>
+                  <div className="flex-1 truncate">
+                    {getParticipantName(participant)}
+                  </div>
                   {getParticipantStatus(participant)}
                 </div>
               ))}

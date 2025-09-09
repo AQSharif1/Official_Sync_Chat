@@ -12,8 +12,8 @@ const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
     storage: localStorage,
-    persistSession: true,
-    autoRefreshToken: true,
+    persistSession: false, // Disable session persistence - always require login
+    autoRefreshToken: false, // Disable auto refresh - force re-login
     detectSessionInUrl: true,
   },
   realtime: {

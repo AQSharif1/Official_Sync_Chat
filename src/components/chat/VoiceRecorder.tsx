@@ -72,11 +72,41 @@ export const VoiceRecorder = ({ onRecordingComplete, disabled }: VoiceRecorderPr
 
     } catch (error) {
       console.error('Error starting recording:', error);
-      toast({
-        title: "Recording Error",
-        description: "Failed to access microphone. Please check permissions.",
-        variant: "destructive",
-      });
+      
+      // Check specific error types for better user feedback
+      if (error instanceof Error) {
+        if (error.name === 'NotAllowedError') {
+          toast({
+            title: "Microphone Permission Denied",
+            description: "Please allow microphone access in your browser settings to record voice messages.",
+            variant: "destructive",
+          });
+        } else if (error.name === 'NotFoundError') {
+          toast({
+            title: "No Microphone Found",
+            description: "No microphone detected. Please connect a microphone and try again.",
+            variant: "destructive",
+          });
+        } else if (error.name === 'NotReadableError') {
+          toast({
+            title: "Microphone In Use",
+            description: "Microphone is being used by another application. Please close other apps and try again.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Recording Error",
+            description: "Failed to access microphone. Please check your browser settings and try again.",
+            variant: "destructive",
+          });
+        }
+      } else {
+        toast({
+          title: "Recording Error",
+          description: "Failed to access microphone. Please check permissions.",
+          variant: "destructive",
+        });
+      }
     }
   }, [onRecordingComplete, toast]);
 
@@ -119,8 +149,8 @@ export const VoiceRecorder = ({ onRecordingComplete, disabled }: VoiceRecorderPr
       onRecordingComplete(recordedBlob);
       resetRecording();
       
-      // Track karma for voice note
-      trackActivity('voice_note');
+      // Track karma for voice note (will be tracked in GroupChat with group ID)
+      // trackActivity('voice_note');
       
       toast({
         title: "Voice message sent!",

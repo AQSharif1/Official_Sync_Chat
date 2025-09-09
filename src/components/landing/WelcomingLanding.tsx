@@ -38,6 +38,14 @@ export const WelcomingLanding = () => {
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
   const [showForgotPassword, setShowForgotPassword] = useState(false);
 
+  // Load saved username on component mount
+  React.useEffect(() => {
+    const savedEmail = localStorage.getItem('saved_username');
+    if (savedEmail) {
+      setFormData(prev => ({ ...prev, email: savedEmail }));
+    }
+  }, []);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -131,6 +139,13 @@ export const WelcomingLanding = () => {
           title: "Sign in failed",
           description: result.error,
           variant: "destructive",
+        });
+      } else {
+        // Save username for next time
+        localStorage.setItem('saved_username', formData.email);
+        toast({
+          title: "Welcome back!",
+          description: "Successfully signed in.",
         });
       }
     } catch (error) {
@@ -441,6 +456,17 @@ export const WelcomingLanding = () => {
                     </div>
 
                     <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="remember-me"
+                          defaultChecked={true}
+                          className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                        />
+                        <Label htmlFor="remember-me" className="text-sm text-muted-foreground">
+                          Remember username
+                        </Label>
+                      </div>
                       <Button
                         type="button"
                         variant="link"

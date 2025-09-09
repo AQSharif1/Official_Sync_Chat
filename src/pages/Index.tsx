@@ -4,18 +4,16 @@ import { useAuth } from '@/hooks/useAuth';
 import { useAuthFlow } from '@/hooks/useAuthFlow';
 import { useIsMobile, useDeviceType } from '@/hooks/use-mobile';
 import { useAppData } from '@/hooks/useAppData';
-import { useBrowserBackButton } from '@/hooks/useBrowserBackButton';
 
 import { supabase } from '@/integrations/supabase/client';
 import { NavigationBar } from '@/components/navigation/NavigationBar';
 import { ProfilePage } from '@/components/profile/ProfilePage';
 import { SettingsView } from '@/components/navigation/SettingsView';
 import { OnboardingFlow } from '@/components/onboarding/OnboardingFlow';
-import { GroupMatchingFlow } from '@/components/group/GroupMatchingFlow';
 import { HomePage } from '@/components/home/HomePage';
-import { GroupChat } from '@/components/chat/GroupChat';
 import { WelcomingLanding } from '@/components/landing/WelcomingLanding';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { GroupChat } from '@/components/chat/GroupChat';
 
 const Index = () => {
   const { user } = useAuth();
@@ -27,25 +25,27 @@ const Index = () => {
   const isMobile = useIsMobile();
   const deviceType = useDeviceType();
   
-  // Browser back button handling
-  const { handleBack } = useBrowserBackButton({
-    onBack: () => {
-      // Custom back behavior - always go to home tab
-      setActiveTab('home');
-    },
-    fallbackRoute: '/home'
-  });
+  // Simple back button handler
+  const handleBack = () => {
+    // Use browser's natural back navigation
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      // If no history, go to home
+      navigate('/home');
+    }
+  };
   
   // Get current tab from URL path
-  const getCurrentTab = (): 'home' | 'chat' | 'profile' | 'settings' => {
+  const getCurrentTab = (): 'home' | 'profile' | 'settings' | 'chat' => {
     const path = location.pathname;
-    if (path === '/chat') return 'chat';
     if (path === '/profile') return 'profile';
     if (path === '/settings') return 'settings';
+    if (path === '/chat') return 'chat';
     return 'home'; // Default to home for '/' and '/home'
   };
   
-  const [activeTab, setActiveTab] = useState<'home' | 'chat' | 'profile' | 'settings'>(getCurrentTab());
+  const [activeTab, setActiveTab] = useState<'home' | 'profile' | 'settings' | 'chat'>(getCurrentTab());
 
   // Sync activeTab with URL changes (for browser back/forward)
   useEffect(() => {
@@ -92,14 +92,6 @@ const Index = () => {
     navigate('/home');
   };
 
-  const handleTabChange = (tab: 'home' | 'chat') => {
-    // Navigate to the appropriate route
-    if (tab === 'chat') {
-      navigate('/chat');
-    } else {
-      navigate('/home');
-    }
-  };
 
   const handleProfileNavigation = () => {
     navigate('/profile');
@@ -181,38 +173,6 @@ const Index = () => {
   }
 
   const renderMainContent = () => {
-    // Chat view - either matching or active chat
-    if (activeTab === 'chat') {
-      if (currentGroup) {
-        return (
-          <div className="animate-fade-in">
-            <GroupChat
-              groupId={currentGroup.id}
-              groupName={currentGroup.name}
-              groupVibe={currentGroup.vibe_label}
-              memberCount={currentGroup.current_members}
-              onBack={handleBack}
-              onGoHome={() => navigate('/home')}
-            />
-          </div>
-        );
-      } else {
-        // Only render GroupMatchingFlow if userProfile is loaded
-        if (!userProfile) {
-          return (
-            <div className="min-h-screen flex items-center justify-center">
-              <LoadingSpinner size="md" text="Loading your profile..." />
-            </div>
-          );
-        }
-
-        return (
-          <div className="animate-fade-in">
-            <GroupMatchingFlow onGroupMatched={handleGroupMatched} userProfile={userProfile} />
-          </div>
-        );
-      }
-    }
 
     // Profile view
     if (activeTab === 'profile') {
@@ -228,6 +188,42 @@ const Index = () => {
       return (
         <div className="animate-fade-in">
           <SettingsView onGoHome={() => setActiveTab('home')} />
+        </div>
+      );
+    }
+
+    // Chat view
+    if (activeTab === 'chat') {
+      if (!currentGroup) {
+        return (
+          <div className="min-h-screen flex items-center justify-center bg-background p-4">
+            <div className="text-center space-y-6 max-w-md mx-auto">
+              <div className="text-6xl mb-4">💬</div>
+              <h1 className="text-2xl font-bold text-foreground">No Active Group</h1>
+              <p className="text-muted-foreground">
+                You need to join a group before accessing the chat.
+              </p>
+              <button 
+                onClick={() => setActiveTab('home')}
+                className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+              >
+                Go to Home
+              </button>
+            </div>
+          </div>
+        );
+      }
+
+      return (
+        <div className="animate-fade-in">
+          <GroupChat 
+            groupId={currentGroup.id}
+            groupName={currentGroup.name}
+            groupVibe={currentGroup.vibe || 'Friendly'}
+            memberCount={currentGroup.member_count || 0}
+            onBack={handleBack}
+            onGoHome={() => setActiveTab('home')}
+          />
         </div>
       );
     }
@@ -256,8 +252,6 @@ const Index = () => {
     <div className={`min-h-screen bg-background ${deviceType === 'mobile' ? 'mobile-optimized' : deviceType === 'desktop' ? 'laptop-optimized' : ''}`}>
       {/* Navigation */}
       <NavigationBar 
-        activeTab={activeTab === 'profile' || activeTab === 'settings' ? 'home' : activeTab}
-        onTabChange={handleTabChange}
         isMobile={isMobile}
       />
       

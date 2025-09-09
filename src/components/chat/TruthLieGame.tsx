@@ -115,8 +115,7 @@ export const TruthLieGame = ({ game, currentUserId, currentUsername, onGuess }: 
                 onClick={() => {
                   if (!hasGuessed && !isRevealed) {
                     onGuess(game.id, statement.id);
-                    // Track karma for game participation
-                    trackActivity('game_participation');
+                    // Karma tracking is handled in GroupChat component
                   }
                 }}
                 disabled={hasGuessed || isRevealed || isCreator}

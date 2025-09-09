@@ -39,7 +39,7 @@ interface VoiceRoomState {
 }
 
 interface VoiceRoomActions {
-  joinVoiceRoom: (groupId: string, groupName: string) => Promise<void>;
+  joinVoiceRoom: (groupId: string, groupName: string, enableMicrophone?: boolean) => Promise<void>;
   leaveVoiceRoom: () => Promise<void>;
   toggleMute: () => void;
   toggleDeafen: () => void;
@@ -301,7 +301,7 @@ export const VoiceRoomProvider: React.FC<VoiceRoomProviderProps> = ({ children }
   }, [user?.id, processPresenceUpdate]);
 
   // Connection management
-  const joinVoiceRoom = useCallback(async (groupId: string, groupName: string) => {
+  const joinVoiceRoom = useCallback(async (groupId: string, groupName: string, enableMicrophone: boolean = false) => {
     if (!user) {
       toast({
         title: "Authentication Required",
@@ -322,17 +322,25 @@ export const VoiceRoomProvider: React.FC<VoiceRoomProviderProps> = ({ children }
     setState(prev => ({ ...prev, isConnecting: true }));
 
     try {
-      // Initialize OpenAI Realtime voice chat
-      const handleConnectionChange = (connected: boolean) => {
-        // Silent error handling for production
-      };
+      // Initialize OpenAI Realtime voice chat only if microphone is enabled
+      if (enableMicrophone) {
+        const handleConnectionChange = (connected: boolean) => {
+          if (!connected) {
+            toast({
+              title: "Voice Connection Lost",
+              description: "Lost connection to voice room. Trying to reconnect...",
+              variant: "destructive",
+            });
+          }
+        };
 
-      voiceChatRef.current = new RealtimeVoiceChat(
-        handleVoiceMessage,
-        handleConnectionChange
-      );
+        voiceChatRef.current = new RealtimeVoiceChat(
+          handleVoiceMessage,
+          handleConnectionChange
+        );
 
-      await voiceChatRef.current.connect();
+        await voiceChatRef.current.connect();
+      }
 
       // Set up Supabase realtime channel
       const channel = supabase.channel(`voice-${groupId}`, {
@@ -348,10 +356,10 @@ export const VoiceRoomProvider: React.FC<VoiceRoomProviderProps> = ({ children }
       channel
         .on('presence', { event: 'sync' }, handlePresenceSync)
         .on('presence', { event: 'join' }, ({ newPresences }) => {
-          // Silent error handling for production
+          console.log('User joined voice room:', newPresences);
         })
         .on('presence', { event: 'leave' }, ({ leftPresences }) => {
-          // Silent error handling for production
+          console.log('User left voice room:', leftPresences);
         });
 
       // Subscribe and track presence
@@ -360,11 +368,12 @@ export const VoiceRoomProvider: React.FC<VoiceRoomProviderProps> = ({ children }
           const presenceData = {
             userId: user.id,
             name: user.email?.split('@')[0] || 'User',
-            isMuted: false,
+            isMuted: !enableMicrophone, // Muted if no microphone access
             isDeafened: false,
             isSpeaking: false,
             handRaised: false,
-            joinedAt: new Date().toISOString()
+            joinedAt: new Date().toISOString(),
+            hasMicrophone: enableMicrophone
           };
 
           // Store in ref for debounced update
@@ -378,25 +387,34 @@ export const VoiceRoomProvider: React.FC<VoiceRoomProviderProps> = ({ children }
             isCollapsed: false // Auto-expand when joining
           }));
 
-          // Track karma for voice participation
-          trackActivity('voice_participation');
+          // Track karma for voice participation with group ID
+          trackKarmaActivity(groupId, 'voice_participation', 3, 'Joined voice room', 1.0);
 
           toast({
             title: "Voice Room Connected",
-            description: `Connected to ${groupName} voice room`,
+            description: `Connected to ${groupName} voice room${enableMicrophone ? '' : ' (listening only)'}`,
           });
         }
       });
 
     } catch (error) {
-      // Silent error handling for production
+      console.error('Voice room connection error:', error);
       setState(prev => ({ ...prev, isConnecting: false }));
       
-      toast({
-        title: "Connection Failed",
-        description: "Failed to join voice room. Please try again.",
-        variant: "destructive",
-      });
+      // Check if it's a permission error and microphone was requested
+      if (enableMicrophone && error instanceof Error && error.name === 'NotAllowedError') {
+        toast({
+          title: "Microphone Permission Required",
+          description: "Please allow microphone access to join the voice room, or try joining without microphone.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Connection Failed",
+          description: "Failed to join voice room. Please check your internet connection and try again.",
+          variant: "destructive",
+        });
+      }
     }
   }, [user, state.isConnecting, state.isConnected, handleVoiceMessage, handlePresenceSync, debouncedPresenceUpdate, toast]);
 

@@ -382,7 +382,7 @@ export class RealtimeVoiceChat {
             await playAudioData(this.audioContext!, bytes);
           }
         } catch (error) {
-          // Silent error handling for production
+          console.error('Error processing voice message:', error);
         }
       };
 
@@ -391,11 +391,13 @@ export class RealtimeVoiceChat {
       };
 
       this.ws.onerror = (error) => {
-        // Silent error handling for production
+        console.error('WebSocket connection error:', error);
+        this.onConnectionChange(false);
       };
 
     } catch (error) {
-      // Silent error handling for production
+      console.error('Failed to connect to voice chat:', error);
+      throw error;
     }
   }
 
