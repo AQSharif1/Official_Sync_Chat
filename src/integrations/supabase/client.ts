@@ -9,20 +9,6 @@ const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-// Custom fetch function to prevent cache race issues with service worker
-const customFetch = (url: RequestInfo | URL, options: RequestInit = {}) => {
-  return fetch(url, {
-    ...options,
-    cache: 'no-store', // Prevent caching to avoid ERR_CACHE_RACE
-    headers: {
-      ...options.headers,
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-      'Pragma': 'no-cache',
-      'Expires': '0',
-    },
-  });
-};
-
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
     storage: localStorage,
@@ -34,13 +20,5 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     params: {
       eventsPerSecond: 20,
     },
-  },
-  global: {
-    headers: {
-      'X-Client-Info': 'syncchat-web',
-      'Accept': 'application/json',
-      'Content-Type': 'application/json',
-    },
-    fetch: customFetch, // Use custom fetch to prevent cache issues
   },
 });
