@@ -13,6 +13,7 @@ import { TypingIndicator } from './TypingIndicator';
 import { PinnedMessagesPanel } from './PinnedMessagesPanel';
 import { MessageBubble } from './MessageBubble';
 import { CollapsibleVoiceRoom } from './CollapsibleVoiceRoom';
+import { GameQuickPicker } from './GameQuickPicker';
 
 import { ChatPoll, CreatePoll } from './ChatPoll';
 import { PlaylistBuilder, CreatePlaylist } from './PlaylistBuilder';
@@ -25,6 +26,7 @@ import { useChatMessages, ChatMessage } from '@/hooks/useChatMessages';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { usePinnedMessages } from '@/hooks/usePinnedMessages';
 import { useAuth } from '@/hooks/useAuth';
+import { useEngagement } from '@/hooks/useEngagement';
 
 import { useAppState } from '@/hooks/useAppState';
 import { useRealtimeChat } from '@/hooks/useRealtimeChat';
@@ -38,7 +40,6 @@ import {
   useThisOrThat, 
   useEmojiRiddles 
 } from '@/hooks/useOptimizedChatTools';
-import { useEngagement } from '@/hooks/useEngagement';
 import { useEnhancedKarma } from '@/hooks/useEnhancedKarma';
 
 import { useDailyPrompts } from '@/hooks/useDailyPrompts';
@@ -119,7 +120,7 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
   });
 
   // New engagement and daily prompts hooks
-  const { engagement, achievements, trackActivity } = useEngagement();
+  const { engagement, achievements, trackActivity, trackKarmaActivity } = useEngagement();
   const { trackEnhancedActivity } = useEnhancedKarma();
   const { getTodaysPrompt } = useDailyPrompts();
   const { validateMessageContent, checkRateLimit, sanitizeInput } = useInputValidation();
