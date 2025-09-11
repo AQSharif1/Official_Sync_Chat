@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { User, Settings, Crown } from 'lucide-react';
+import { User, Settings, Crown, MessageCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useEngagement } from '@/hooks/useEngagement';
 import { useToast } from '@/hooks/use-toast';
