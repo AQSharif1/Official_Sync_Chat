@@ -141,23 +141,26 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
     if (!groupId) return;
     
     try {
-      // Get all group members and their karma
+      // Get all group members first
       const { data: memberData } = await supabase
         .from('group_members')
-        .select(`
-          user_id,
-          user_engagement!inner(
-            achievement_points
-          )
-        `)
+        .select('user_id')
         .eq('group_id', groupId);
 
-      if (memberData) {
-        const totalKarma = memberData.reduce((sum, member: any) => {
-          const karma = member.user_engagement?.achievement_points || 0;
-          return sum + karma;
-        }, 0);
-        setGroupKarmaTotal(totalKarma);
+      if (memberData && memberData.length > 0) {
+        // Get user engagement data for all members
+        const userIds = memberData.map(member => member.user_id);
+        const { data: engagementData } = await supabase
+          .from('user_engagement')
+          .select('user_id, achievement_points')
+          .in('user_id', userIds);
+
+        if (engagementData) {
+          const totalKarma = engagementData.reduce((sum, engagement: any) => {
+            return sum + (engagement.achievement_points || 0);
+          }, 0);
+          setGroupKarmaTotal(totalKarma);
+        }
       }
     } catch (error) {
       console.error('Error loading group karma:', error);

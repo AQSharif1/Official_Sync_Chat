@@ -25,13 +25,19 @@ const Index = () => {
   const isMobile = useIsMobile();
   const deviceType = useDeviceType();
   
-  // Simple back button handler
+  // Simple back button handler with error handling
   const handleBack = () => {
-    // Use browser's natural back navigation
-    if (window.history.length > 1) {
-      window.history.back();
-    } else {
-      // If no history, go to home
+    try {
+      // Use browser's natural back navigation
+      if (window.history.length > 1) {
+        window.history.back();
+      } else {
+        // If no history, go to home
+        navigate('/home');
+      }
+    } catch (error) {
+      console.error('Error in back navigation:', error);
+      // Fallback to home
       navigate('/home');
     }
   };
