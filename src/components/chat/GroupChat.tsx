@@ -661,7 +661,7 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
       <CollapsibleVoiceRoom groupName={groupName} />
 
       <ResponsiveModal
-        open={!!activeView}
+        open={!!activeView && activeView !== 'game-picker'}
         onOpenChange={(open) => !open && setActiveView(null)}
         title="Chat Tools"
         className="max-w-2xl"
@@ -900,6 +900,28 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
 
         {/* Typing Indicator */}
         <TypingIndicator typingUsers={typingUsers} />
+
+        {/* Game Quick Picker - Show directly above chat input */}
+        {activeView === 'game-picker' && (
+          <div className="border-t border-border bg-muted/20 p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-medium text-foreground">Choose a Game</h3>
+              <button 
+                onClick={() => setActiveView(null)}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                ✕
+              </button>
+            </div>
+            <GameQuickPicker 
+              onGameSelect={(gameType) => {
+                setActiveView(null);
+                handleToolSelect(gameType);
+              }}
+              disabled={false}
+            />
+          </div>
+        )}
 
         {/* Chat Input */}
         <ChatInput

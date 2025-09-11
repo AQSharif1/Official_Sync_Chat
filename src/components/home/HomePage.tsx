@@ -20,8 +20,6 @@ import {
   Flame,
   Target,
   Gamepad2,
-  Mic,
-  Camera
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -421,30 +419,6 @@ export const HomePage: React.FC<HomePageProps> = ({ onStartMatching, onViewProfi
           </Card>
         )}
 
-        {/* Quick Actions */}
-        <Card className="bg-gradient-to-r from-muted/50 to-muted/30">
-          <CardContent className="p-6">
-            <h3 className="text-lg font-semibold mb-4 text-center">Quick Actions</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Button variant="outline" className="h-16 flex-col gap-2 hover:bg-primary/5">
-                <Mic className="w-5 h-5" />
-                <span className="text-sm">Voice Note</span>
-              </Button>
-              <Button variant="outline" className="h-16 flex-col gap-2 hover:bg-primary/5">
-                <Gamepad2 className="w-5 h-5" />
-                <span className="text-sm">Start Game</span>
-              </Button>
-              <Button variant="outline" className="h-16 flex-col gap-2 hover:bg-primary/5">
-                <Camera className="w-5 h-5" />
-                <span className="text-sm">Share Photo</span>
-              </Button>
-              <Button variant="outline" className="h-16 flex-col gap-2 hover:bg-primary/5">
-                <Trophy className="w-5 h-5" />
-                <span className="text-sm">Leaderboard</span>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
 
         {/* Footer */}
         <div className="text-center py-12">
