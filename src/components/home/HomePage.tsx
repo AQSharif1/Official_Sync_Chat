@@ -5,7 +5,24 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { useAppData } from '@/hooks/useAppData';
 import { useEngagement } from '@/hooks/useEngagement';
-import { User, Settings, RefreshCw, Home, Users } from 'lucide-react';
+import { 
+  User, 
+  Settings, 
+  RefreshCw, 
+  Users, 
+  MessageCircle, 
+  Trophy, 
+  Zap, 
+  Heart,
+  Sparkles,
+  ArrowRight,
+  Crown,
+  Flame,
+  Target,
+  Gamepad2,
+  Mic,
+  Camera
+} from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface HomePageProps {
@@ -176,170 +193,265 @@ export const HomePage: React.FC<HomePageProps> = ({ onStartMatching, onViewProfi
   }
 
   return (
-    <div className={`min-h-screen bg-background p-4 ${className}`}>
-      <div className="max-w-4xl mx-auto space-y-6">
+    <div className={`min-h-screen bg-gradient-to-br from-background via-background to-muted/20 ${className}`}>
+      <div className="max-w-6xl mx-auto px-4 py-8">
         
-        {/* Welcome Header */}
-        <div className="text-center space-y-4 py-8">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-            {getGreetingTime()}, {userProfile?.username || 'friend'} 👋
+        {/* Hero Section */}
+        <div className="text-center space-y-6 py-12">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20">
+            <Sparkles className="w-4 h-4 text-primary" />
+            <span className="text-sm font-medium text-primary">Welcome to GroupMeet</span>
+          </div>
+          
+          <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-foreground via-primary to-primary/60 bg-clip-text text-transparent leading-tight">
+            {getGreetingTime()}, {userProfile?.username || 'friend'}!
           </h1>
-          <p className="text-muted-foreground">
-            Welcome back! What would you like to do today?
+          
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+            Connect with like-minded people, share your vibe, and build meaningful conversations in real-time.
           </p>
         </div>
 
-        {/* Current Group Status */}
+        {/* Current Group Status - Enhanced */}
         {appCurrentGroup ? (
-          <Card className="border-2 border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="w-5 h-5 text-primary" />
-                Active Group
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-lg">{appCurrentGroup.name}</span>
-                  <Badge variant="secondary">{appCurrentGroup.vibe_label}</Badge>
+          <Card className="relative overflow-hidden border-2 border-primary/20 bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 mb-8">
+            <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent" />
+            <CardContent className="relative p-8">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-primary/20 rounded-xl flex items-center justify-center">
+                    <Users className="w-6 h-6 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-foreground">Active Group</h3>
+                    <p className="text-muted-foreground">You're currently connected</p>
+                  </div>
                 </div>
-                <p className="text-muted-foreground text-sm">
-                  {(appCurrentGroup as any).actual_member_count || appCurrentGroup.current_members || 0} member{((appCurrentGroup as any).actual_member_count || appCurrentGroup.current_members || 0) !== 1 ? 's' : ''} • 
-                  Active since {new Date(appCurrentGroup.created_at).toLocaleDateString()}
-                </p>
+                <Badge variant="secondary" className="px-3 py-1 text-sm font-medium">
+                  {appCurrentGroup.vibe_label}
+                </Badge>
+              </div>
+              
+              <div className="space-y-3">
+                <h4 className="text-2xl font-bold text-foreground">{appCurrentGroup.name}</h4>
+                <div className="flex items-center gap-6 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4" />
+                    <span>{(appCurrentGroup as any).actual_member_count || appCurrentGroup.current_members || 0} members</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Flame className="w-4 h-4" />
+                    <span>Active since {new Date(appCurrentGroup.created_at).toLocaleDateString()}</span>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
         ) : (
-          <Card className="border-2 border-muted bg-muted/20">
-            <CardContent className="p-6 text-center">
-              <div className="space-y-2">
-                <h3 className="font-semibold">You're not in a group yet</h3>
-                <p className="text-muted-foreground text-sm">
-                  Find your perfect group match and start chatting!
-                </p>
+          <Card className="border-2 border-dashed border-muted/50 bg-muted/10 mb-8">
+            <CardContent className="p-8 text-center">
+              <div className="w-16 h-16 bg-muted/50 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Target className="w-8 h-8 text-muted-foreground" />
               </div>
+              <h3 className="text-xl font-semibold mb-2">Ready to Find Your Group?</h3>
+              <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                Discover amazing people who share your interests and start meaningful conversations.
+              </p>
+              <Button onClick={handleEnterChat} className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-3">
+                <Sparkles className="w-4 h-4 mr-2" />
+                Find My Group
+              </Button>
             </CardContent>
           </Card>
         )}
 
-        {/* Main Action Buttons */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* Main Action Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           
-          {/* Enter/Join Chat */}
+          {/* Primary Action - Chat/Group */}
           <Card 
-            className="hover:shadow-lg transition-all duration-300 hover:scale-[1.02] cursor-pointer active:scale-[0.98]" 
+            className="group hover:shadow-2xl transition-all duration-300 hover:scale-[1.02] cursor-pointer active:scale-[0.98] border-2 hover:border-primary/30 bg-gradient-to-br from-primary/5 to-primary/10"
             onClick={handleEnterChat}
           >
-            <CardContent className="p-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center">
+            <CardContent className="p-8">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="w-16 h-16 bg-primary/20 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
                   {appCurrentGroup ? (
-                    <RefreshCw className="w-6 h-6 text-primary" />
+                    <MessageCircle className="w-8 h-8 text-primary" />
                   ) : (
-                    <RefreshCw className="w-6 h-6 text-primary" />
+                    <RefreshCw className="w-8 h-8 text-primary" />
                   )}
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-lg">
-                    {appCurrentGroup ? '💬 Enter Group Chat' : '🔄 Match Me'}
+                  <h3 className="text-xl font-bold text-foreground mb-1">
+                    {appCurrentGroup ? 'Continue Chatting' : 'Find My Group'}
                   </h3>
-                  <p className="text-muted-foreground text-sm">
+                  <p className="text-muted-foreground">
                     {appCurrentGroup 
-                      ? `Continue chatting in ${appCurrentGroup.name}` 
-                      : 'Find and join a new group that matches your vibe'
+                      ? `Jump back into ${appCurrentGroup.name}` 
+                      : 'Match with your perfect group'
                     }
                   </p>
                 </div>
+                <ArrowRight className="w-5 h-5 text-primary group-hover:translate-x-1 transition-transform" />
               </div>
+              
+              {appCurrentGroup && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                  <span>Live • {(appCurrentGroup as any).actual_member_count || appCurrentGroup.current_members || 0} online</span>
+                </div>
+              )}
             </CardContent>
           </Card>
 
-          {/* View Profile */}
+          {/* Profile Card */}
           <Card 
-            className="hover:shadow-lg transition-all duration-300 hover:scale-[1.02] cursor-pointer active:scale-[0.98]" 
+            className="group hover:shadow-2xl transition-all duration-300 hover:scale-[1.02] cursor-pointer active:scale-[0.98] border-2 hover:border-blue-500/30 bg-gradient-to-br from-blue-500/5 to-blue-500/10"
             onClick={handleViewProfile}
           >
-            <CardContent className="p-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center">
-                  <User className="w-6 h-6 text-blue-500" />
+            <CardContent className="p-8">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="w-16 h-16 bg-blue-500/20 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <User className="w-8 h-8 text-blue-500" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-lg">👤 View Profile</h3>
-                  <p className="text-muted-foreground text-sm">
-                    Check your karma, achievements, and edit your vibe tags
-                  </p>
+                  <h3 className="text-xl font-bold text-foreground mb-1">My Profile</h3>
+                  <p className="text-muted-foreground">View stats & achievements</p>
                 </div>
-                {engagement && (
-                  <div className="text-right">
-                    <div className="text-sm font-medium">{engagement.achievement_points}</div>
-                    <div className="text-xs text-muted-foreground">karma</div>
-                  </div>
-                )}
+                <ArrowRight className="w-5 h-5 text-blue-500 group-hover:translate-x-1 transition-transform" />
               </div>
+              
+              {engagement && (
+                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-muted/50">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-blue-500 flex items-center justify-center gap-1">
+                      <Trophy className="w-5 h-5" />
+                      {engagement.achievement_points || 0}
+                    </div>
+                    <div className="text-xs text-muted-foreground">Karma Points</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-blue-500 flex items-center justify-center gap-1">
+                      <Flame className="w-5 h-5" />
+                      {engagement.daily_streak || 0}
+                    </div>
+                    <div className="text-xs text-muted-foreground">Day Streak</div>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
-          {/* Settings */}
+          {/* Settings Card */}
           <Card 
-            className="hover:shadow-lg transition-all duration-300 hover:scale-[1.02] cursor-pointer active:scale-[0.98]" 
+            className="group hover:shadow-2xl transition-all duration-300 hover:scale-[1.02] cursor-pointer active:scale-[0.98] border-2 hover:border-gray-500/30 bg-gradient-to-br from-gray-500/5 to-gray-500/10"
             onClick={handleViewSettings}
           >
-            <CardContent className="p-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-gray-500/10 rounded-xl flex items-center justify-center">
-                  <Settings className="w-6 h-6 text-gray-500" />
+            <CardContent className="p-8">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="w-16 h-16 bg-gray-500/20 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Settings className="w-8 h-8 text-gray-500" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-lg">⚙️ Settings</h3>
-                  <p className="text-muted-foreground text-sm">
-                    Manage notifications, premium features, and account settings
-                  </p>
+                  <h3 className="text-xl font-bold text-foreground mb-1">Settings</h3>
+                  <p className="text-muted-foreground">Customize your experience</p>
                 </div>
+                <ArrowRight className="w-5 h-5 text-gray-500 group-hover:translate-x-1 transition-transform" />
+              </div>
+              
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Crown className="w-4 h-4" />
+                <span>Premium features available</span>
               </div>
             </CardContent>
           </Card>
-
         </div>
 
-        {/* Quick Stats */}
+        {/* Activity Dashboard */}
         {engagement && (
-          <Card>
+          <Card className="mb-8">
             <CardHeader>
-              <CardTitle className="text-lg">Today's Activity</CardTitle>
+              <CardTitle className="flex items-center gap-2 text-xl">
+                <Zap className="w-5 h-5 text-primary" />
+                Today's Activity
+              </CardTitle>
+              <CardDescription>Your engagement stats for today</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-3 gap-4 text-center">
-                <div>
-                  <div className="text-2xl font-bold text-primary">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                <div className="text-center p-4 rounded-xl bg-primary/5 border border-primary/10">
+                  <div className="text-3xl font-bold text-primary mb-1">
                     {engagement.messages_sent_today || 0}
                   </div>
-                  <div className="text-xs text-muted-foreground">Messages</div>
+                  <div className="text-sm text-muted-foreground flex items-center justify-center gap-1">
+                    <MessageCircle className="w-4 h-4" />
+                    Messages
+                  </div>
                 </div>
-                <div>
-                  <div className="text-2xl font-bold text-primary">
+                <div className="text-center p-4 rounded-xl bg-pink-500/5 border border-pink-500/10">
+                  <div className="text-3xl font-bold text-pink-500 mb-1">
                     {engagement.reactions_given_today || 0}
                   </div>
-                  <div className="text-xs text-muted-foreground">Reactions</div>
+                  <div className="text-sm text-muted-foreground flex items-center justify-center gap-1">
+                    <Heart className="w-4 h-4" />
+                    Reactions
+                  </div>
                 </div>
-                <div>
-                  <div className="text-2xl font-bold text-primary">
+                <div className="text-center p-4 rounded-xl bg-orange-500/5 border border-orange-500/10">
+                  <div className="text-3xl font-bold text-orange-500 mb-1">
                     {engagement.daily_streak || 0}
                   </div>
-                  <div className="text-xs text-muted-foreground">Day Streak</div>
+                  <div className="text-sm text-muted-foreground flex items-center justify-center gap-1">
+                    <Flame className="w-4 h-4" />
+                    Day Streak
+                  </div>
+                </div>
+                <div className="text-center p-4 rounded-xl bg-purple-500/5 border border-purple-500/10">
+                  <div className="text-3xl font-bold text-purple-500 mb-1">
+                    {engagement.tools_used_today || 0}
+                  </div>
+                  <div className="text-sm text-muted-foreground flex items-center justify-center gap-1">
+                    <Gamepad2 className="w-4 h-4" />
+                    Tools Used
+                  </div>
                 </div>
               </div>
             </CardContent>
           </Card>
         )}
 
+        {/* Quick Actions */}
+        <Card className="bg-gradient-to-r from-muted/50 to-muted/30">
+          <CardContent className="p-6">
+            <h3 className="text-lg font-semibold mb-4 text-center">Quick Actions</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <Button variant="outline" className="h-16 flex-col gap-2 hover:bg-primary/5">
+                <Mic className="w-5 h-5" />
+                <span className="text-sm">Voice Note</span>
+              </Button>
+              <Button variant="outline" className="h-16 flex-col gap-2 hover:bg-primary/5">
+                <Gamepad2 className="w-5 h-5" />
+                <span className="text-sm">Start Game</span>
+              </Button>
+              <Button variant="outline" className="h-16 flex-col gap-2 hover:bg-primary/5">
+                <Camera className="w-5 h-5" />
+                <span className="text-sm">Share Photo</span>
+              </Button>
+              <Button variant="outline" className="h-16 flex-col gap-2 hover:bg-primary/5">
+                <Trophy className="w-5 h-5" />
+                <span className="text-sm">Leaderboard</span>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Footer */}
-        <div className="text-center py-8">
-          <p className="text-muted-foreground text-sm">
-            Ready to connect? Pick an option above to get started! ✨
-          </p>
+        <div className="text-center py-12">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-muted/50">
+            <Sparkles className="w-4 h-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">Ready to connect and create amazing conversations!</span>
+          </div>
         </div>
       </div>
     </div>

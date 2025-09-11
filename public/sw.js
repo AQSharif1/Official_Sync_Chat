@@ -1,4 +1,4 @@
-const CACHE_NAME = 'group-harmony-v2';
+const CACHE_NAME = 'group-harmony-v3'; // Updated to force SW refresh
 const urlsToCache = [
   '/',
   '/static/js/bundle.js',
@@ -35,13 +35,65 @@ self.addEventListener('activate', (event) => {
 
 // Fetch event - serve from cache, fallback to network
 self.addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url);
+  
+  // CRITICAL: Bypass service worker for all Supabase requests to prevent cache race
+  if (url.hostname.endsWith('.supabase.co') && url.pathname.startsWith('/rest/v1/')) {
+    return; // Let browser handle Supabase REST API requests directly
+  }
+  
+  // Skip all other API requests, auth, and realtime requests - let browser handle them
+  if (event.request.method !== 'GET' || 
+      event.request.url.includes('/auth/') ||
+      event.request.url.includes('/realtime/') ||
+      event.request.url.includes('/api/') ||
+      event.request.url.includes('/rest/v1/') ||
+      event.request.url.includes('?') || // Skip any requests with query params
+      event.request.url.includes('.json') ||
+      event.request.url.includes('.js') ||
+      event.request.url.includes('.css') ||
+      event.request.url.includes('.png') ||
+      event.request.url.includes('.jpg') ||
+      event.request.url.includes('.svg') ||
+      event.request.url.includes('.ico')) {
+    return; // Let browser handle these requests without service worker interference
+  }
+
   event.respondWith(
     caches.match(event.request)
       .then((response) => {
-        // Return cached version or fetch from network
-        return response || fetch(event.request);
-      }
-    )
+        // Return cached version if available
+        if (response) {
+          return response;
+        }
+
+        // Fetch from network with error handling
+        return fetch(event.request)
+          .then((networkResponse) => {
+            // Don't cache non-successful responses
+            if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
+              return networkResponse;
+            }
+
+            // Clone the response for caching
+            const responseToCache = networkResponse.clone();
+            
+            caches.open(CACHE_NAME)
+              .then((cache) => {
+                cache.put(event.request, responseToCache);
+              });
+
+            return networkResponse;
+          })
+          .catch((error) => {
+            console.log('Fetch failed:', error);
+            // Return a fallback response for navigation requests
+            if (event.request.mode === 'navigate') {
+              return caches.match('/');
+            }
+            throw error;
+          });
+      })
   );
 });
 

@@ -69,8 +69,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   useEffect(() => {
     const checkInitialSession = async () => {
       try {
-        // Always clear any existing session to force login
-        await supabase.auth.signOut();
+        // Check for existing session instead of forcing logout
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (session && !error) {
+          setUser(session.user);
+          setSession(session);
+        }
         
         setLoading(false);
       } catch (error) {
