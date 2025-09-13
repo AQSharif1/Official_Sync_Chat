@@ -93,9 +93,13 @@ export const useAccountManagement = () => {
         return { success: false, error: result?.error || 'Failed to delete account' };
       }
 
-      // Clear any local storage data
+      // Clear any local storage data (except theme and user preferences)
       localStorage.removeItem('clearedMessages');
-      localStorage.clear();
+      localStorage.removeItem('saved_username');
+      localStorage.removeItem('incomplete_signup_time');
+      localStorage.removeItem('onboarding_skipped');
+      localStorage.removeItem('cleanup_warning_shown');
+      // Note: Don't clear theme or app-settings as they're user-specific
 
       toast({
         title: "Account Deleted",

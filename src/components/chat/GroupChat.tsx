@@ -27,6 +27,8 @@ import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { usePinnedMessages } from '@/hooks/usePinnedMessages';
 import { useAuth } from '@/hooks/useAuth';
 import { useEngagement } from '@/hooks/useEngagement';
+import { useClearedMessages } from '@/hooks/useClearedMessages';
+import { useDatabaseGames } from '@/hooks/useDatabaseGames';
 
 import { useAppState } from '@/hooks/useAppState';
 import { useRealtimeChat } from '@/hooks/useRealtimeChat';
@@ -89,16 +91,10 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
   const [actualMemberCount, setActualMemberCount] = useState(memberCount);
   const [showSwitchDialog, setShowSwitchDialog] = useState(false);
   const [activeGame, setActiveGame] = useState<ActiveGameState | null>(null);
-  const [hiddenMessages, setHiddenMessages] = useState<Set<string>>(new Set());
   const [showDMModal, setShowDMModal] = useState(false);
   
-  // Load previously cleared messages from localStorage on component mount
-  useEffect(() => {
-    const clearedMessages = JSON.parse(localStorage.getItem('clearedMessages') || '[]');
-    if (clearedMessages.length > 0) {
-      setHiddenMessages(new Set(clearedMessages));
-    }
-  }, []);
+  // Use database-based cleared messages instead of localStorage
+  const { clearedMessageIds, clearMessages, isMessageCleared } = useClearedMessages(groupId);
   const [groupKarmaTotal, setGroupKarmaTotal] = useState<number>(0);
 
   // Enhanced real-time chat
@@ -132,9 +128,16 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
   const { polls, createPoll, votePoll, closePoll } = usePolls();
   const { playlists, createPlaylist, addSongToPlaylist, getActivePlaylist } = usePlaylists();
   const { prompts: wyrPrompts, createPrompt: createWYRPrompt, votePrompt: voteWYRPrompt } = useWouldYouRather();
-  const { games: truthLieGames, createGame: createTruthLieGame, makeGuess: makeTruthLieGuess } = useTruthLie();
-  const { prompts: totPrompts, createPrompt: createTOTPrompt, votePrompt: voteTOTPrompt, clearPrompts: clearTOTPrompts } = useThisOrThat();
-  const { riddles, createRiddle, makeGuess: makeRiddleGuess, clearRiddles } = useEmojiRiddles();
+  
+  // Use database games instead of localStorage
+  const { 
+    thisOrThatGames: totPrompts, 
+    emojiRiddleGames: riddles, 
+    truthLieGames, 
+    createThisOrThatGame: createTOTPrompt,
+    createEmojiRiddleGame: createRiddle,
+    createTruthLieGame: createTruthLieGame
+  } = useDatabaseGames(groupId);
 
 
 
@@ -345,7 +348,8 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
             "I can speak 3 languages fluently", 
             "I have never been on a roller coaster"
           ];
-          createTruthLieGame(randomStatements, user?.id || '', userProfile.username);
+          const lieStatementNumber = Math.floor(Math.random() * 3) + 1; // 1, 2, or 3
+          createTruthLieGame(randomStatements, lieStatementNumber);
           break;
       }
 
@@ -554,24 +558,27 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
     }
   };
 
-  const handleHideMessage = (messageId: string) => {
-    setHiddenMessages(prev => new Set(prev).add(messageId));
+  const handleHideMessage = async (messageId: string) => {
+    await clearMessages([messageId]);
   };
 
-  const handleClearChat = () => {
-    // Permanently clear messages from user's local view by storing in localStorage
-    const clearedMessageIds = messages.map(m => m.id);
-    const existingCleared = JSON.parse(localStorage.getItem('clearedMessages') || '[]');
-    const allCleared = [...existingCleared, ...clearedMessageIds];
-    localStorage.setItem('clearedMessages', JSON.stringify(allCleared));
+  const handleClearChat = async () => {
+    // Clear messages using database instead of localStorage
+    const messageIds = messages.map(m => m.id);
+    const success = await clearMessages(messageIds);
     
-    // Also set in current state for immediate effect
-    setHiddenMessages(new Set(clearedMessageIds));
-    
-    toast({
-      title: "Chat cleared",
-      description: "All messages have been permanently removed from your view",
-    });
+    if (success) {
+      toast({
+        title: "Chat cleared",
+        description: "All messages have been permanently removed from your view",
+      });
+    } else {
+      toast({
+        title: "Error",
+        description: "Failed to clear messages. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleRefresh = () => {
@@ -837,7 +844,7 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
             ) : (
               /* Show only user messages once someone has sent a message */
               messages
-                .filter((message) => !hiddenMessages.has(message.id))
+                .filter((message) => !isMessageCleared(message.id))
                 .map((message) => (
                   <MessageBubble
                     key={message.id}
@@ -854,15 +861,21 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
             {(totPrompts.length > 0 || riddles.length > 0 || truthLieGames.length > 0) && (
               <div className="space-y-4 mt-6 pt-4 border-t">
                 {/* Two Truths and a Lie Games */}
-                {truthLieGames.filter(g => g.isActive).map(game => (
+                {truthLieGames.map(game => (
                   <TruthLieGame
                     key={game.id}
-                    game={game}
+                    game={{
+                      id: game.id,
+                      statements: [game.statement_1, game.statement_2, game.statement_3],
+                      lieStatementNumber: game.lie_statement_number,
+                      isActive: game.is_active,
+                      createdBy: game.created_by
+                    }}
                     currentUserId={user?.id || ''}
                     currentUsername={userProfile?.username || 'Anonymous'}
                     onGuess={(gameId, statementId) => {
                       if (user?.id) {
-                        makeTruthLieGuess(gameId, statementId, user.id);
+                        // TODO: Implement database guess submission
                         trackActivity('game_participation');
                       }
                     }}
@@ -870,14 +883,20 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
                 ))}
 
                 {/* This or That Prompts */}
-                {totPrompts.filter(p => p.isActive).map(prompt => (
+                {totPrompts.map(prompt => (
                   <ThisOrThat
                     key={prompt.id}
-                    prompt={prompt}
+                    prompt={{
+                      id: prompt.id,
+                      question: prompt.question,
+                      options: [prompt.option_a, prompt.option_b],
+                      isActive: prompt.is_active,
+                      createdBy: prompt.created_by
+                    }}
                     currentUserId={user?.id || ''}
                     onVote={(promptId, optionId) => {
                       if (user?.id) {
-                        voteTOTPrompt(promptId, optionId, user.id);
+                        // TODO: Implement database vote submission
                         trackActivity('tool');
                       }
                     }}
@@ -885,15 +904,23 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
                 ))}
                 
                 {/* Emoji Riddles */}
-                {riddles.filter(r => r.isActive).map(riddle => (
+                {riddles.map(riddle => (
                   <EmojiRiddleGame
                     key={riddle.id}
-                    riddle={riddle}
+                    riddle={{
+                      id: riddle.id,
+                      emojis: riddle.emojis,
+                      answer: riddle.answer,
+                      hint: riddle.hint,
+                      funFact: riddle.fun_fact,
+                      isActive: riddle.is_active,
+                      createdBy: riddle.created_by
+                    }}
                     currentUserId={user?.id || ''}
                     currentUsername={userProfile?.username || 'Anonymous'}
                     onGuess={(riddleId, guess) => {
                       if (user?.id && userProfile?.username) {
-                        makeRiddleGuess(riddleId, guess, user.id, userProfile.username);
+                        // TODO: Implement database guess submission
                         trackActivity('tool');
                       }
                     }}

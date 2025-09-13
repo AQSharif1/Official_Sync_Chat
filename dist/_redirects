@@ -1,4 +1,17 @@
-# Redirect all non-asset requests to index.html for SPA routing
-# But don't redirect actual asset files (JS, CSS, images, etc.)
+# Serve static assets directly
 /assets/*    /assets/:splat    200
+
+# Serve JavaScript files directly (including Vite chunks)
+/*.js    /:splat    200
+
+# Handle Vite chunk files with hash names
+/assets/*-*.js    /assets/:splat    200
+/*.css    /:splat    200
+/*.ico    /:splat    200
+/*.svg    /:splat    200
+/*.png    /:splat    200
+/*.jpg    /:splat    200
+/*.webp    /:splat    200
+
+# SPA fallback - only for non-asset requests
 /*    /index.html   200
