@@ -30,6 +30,7 @@ import { useEngagement } from '@/hooks/useEngagement';
 import { useClearedMessages } from '@/hooks/useClearedMessages';
 import { useDatabaseGames } from '@/hooks/useDatabaseGames';
 import { useGamePreferences } from '@/hooks/useGamePreferences';
+import { usePremium } from '@/hooks/usePremium';
 
 import { useAppState } from '@/hooks/useAppState';
 import { useRealtimeChat } from '@/hooks/useRealtimeChat';
@@ -77,6 +78,19 @@ interface GroupChatProps {
 export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, onGoHome }: GroupChatProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { isPremium } = usePremium();
+
+  const handleDMClick = () => {
+    if (!isPremium) {
+      toast({
+        title: "Premium Required",
+        description: "Direct messaging is available exclusively for premium subscribers. Upgrade to start private conversations!",
+        variant: "destructive",
+      });
+      return;
+    }
+    setShowDMModal(true);
+  };
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { messages, loading: messagesLoading, addMessage, addReaction, refetch } = useChatMessages(groupId);
@@ -772,7 +786,7 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
             <Button 
               variant="ghost" 
               size="sm" 
-              onClick={() => setShowDMModal(true)} 
+              onClick={handleDMClick} 
               className="h-9 w-9 p-0 rounded-full hover:bg-muted/50"
               title="Direct Messages"
             >
