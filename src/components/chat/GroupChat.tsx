@@ -29,6 +29,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useEngagement } from '@/hooks/useEngagement';
 import { useClearedMessages } from '@/hooks/useClearedMessages';
 import { useDatabaseGames } from '@/hooks/useDatabaseGames';
+import { useGamePreferences } from '@/hooks/useGamePreferences';
 
 import { useAppState } from '@/hooks/useAppState';
 import { useRealtimeChat } from '@/hooks/useRealtimeChat';
@@ -138,6 +139,9 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
     createEmojiRiddleGame: createRiddle,
     createTruthLieGame: createTruthLieGame
   } = useDatabaseGames(groupId);
+
+  // Use database game preferences instead of localStorage
+  const { preferences: gamePreferences } = useGamePreferences();
 
 
 
@@ -303,11 +307,10 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
   const handleStartGame = (gameType: ActiveGameState['gameType']) => {
     if (!userProfile) return;
     
-    const gamePrefs = loadGamePreferences();
     const success = gameTimerManager.startGame(
       gameType,
       crypto.randomUUID(),
-      gamePrefs.gameDuration,
+      gamePreferences.gameDuration,
       {
         onTimeEnd: () => {
           // Auto-end game when time expires
@@ -356,7 +359,7 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
       trackActivity('tool');
       toast({
         title: "Game Started",
-        description: `${gameType} round is now active for ${gamePrefs.gameDuration} minutes!`,
+        description: `${gameType} round is now active for ${gamePreferences.gameDuration} minutes!`,
       });
     } else {
       toast({
@@ -866,10 +869,16 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
                     key={game.id}
                     game={{
                       id: game.id,
-                      statements: [game.statement_1, game.statement_2, game.statement_3],
-                      lieStatementNumber: game.lie_statement_number,
+                      createdBy: game.created_by,
+                      createdByUsername: 'Anonymous', // TODO: Get username from profiles
+                      statements: [
+                        { id: '1', text: game.statement_1, isLie: game.lie_statement_number === 1 },
+                        { id: '2', text: game.statement_2, isLie: game.lie_statement_number === 2 },
+                        { id: '3', text: game.statement_3, isLie: game.lie_statement_number === 3 }
+                      ],
+                      guesses: [], // TODO: Load guesses from database
                       isActive: game.is_active,
-                      createdBy: game.created_by
+                      expiresAt: new Date(game.expires_at || Date.now() + 30 * 60 * 1000)
                     }}
                     currentUserId={user?.id || ''}
                     currentUsername={userProfile?.username || 'Anonymous'}
@@ -889,9 +898,13 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
                     prompt={{
                       id: prompt.id,
                       question: prompt.question,
-                      options: [prompt.option_a, prompt.option_b],
-                      isActive: prompt.is_active,
-                      createdBy: prompt.created_by
+                      options: [
+                        { id: 'A', text: prompt.option_a, emoji: '🍕', votes: 0, voters: [] },
+                        { id: 'B', text: prompt.option_b, emoji: '🍔', votes: 0, voters: [] }
+                      ],
+                      createdAt: new Date(prompt.created_at),
+                      expiresAt: new Date(prompt.expires_at || Date.now() + 30 * 60 * 1000),
+                      isActive: prompt.is_active
                     }}
                     currentUserId={user?.id || ''}
                     onVote={(promptId, optionId) => {
@@ -911,10 +924,12 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
                       id: riddle.id,
                       emojis: riddle.emojis,
                       answer: riddle.answer,
-                      hint: riddle.hint,
-                      funFact: riddle.fun_fact,
-                      isActive: riddle.is_active,
-                      createdBy: riddle.created_by
+                      hint: riddle.hint || '',
+                      funFact: riddle.fun_fact || '',
+                      guesses: [], // TODO: Load guesses from database
+                      createdAt: new Date(riddle.created_at),
+                      expiresAt: new Date(riddle.expires_at || Date.now() + 30 * 60 * 1000),
+                      isActive: riddle.is_active
                     }}
                     currentUserId={user?.id || ''}
                     currentUsername={userProfile?.username || 'Anonymous'}

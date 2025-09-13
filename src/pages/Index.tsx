@@ -94,7 +94,7 @@ const Index = () => {
   };
 
   const handleBackToMatching = () => {
-    setCurrentGroup(null);
+    // Don't clear currentGroup - keep it for easy return to chat
     navigate('/home');
   };
 
@@ -105,6 +105,50 @@ const Index = () => {
 
   const handleSettingsNavigation = () => {
     navigate('/settings');
+  };
+
+  // Ensure group data is loaded when navigating to chat
+  const handleChatNavigation = async () => {
+    if (!currentGroup && user) {
+      // Try to load the user's current group
+      try {
+        const { data: groupMembership } = await supabase
+          .from('group_members')
+          .select(`
+            group_id,
+            groups!inner(
+              id,
+              name,
+              vibe_label,
+              current_members,
+              max_members,
+              lifecycle_stage,
+              created_at
+            )
+          `)
+          .eq('user_id', user.id)
+          .eq('groups.lifecycle_stage', 'active')
+          .order('joined_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (groupMembership) {
+          const groupData = groupMembership.groups as any;
+          setCurrentGroup({
+            id: groupData.id,
+            name: groupData.name,
+            vibe_label: groupData.vibe_label,
+            current_members: groupData.current_members,
+            max_members: groupData.max_members,
+            lifecycle_stage: groupData.lifecycle_stage,
+            created_at: groupData.created_at
+          });
+        }
+      } catch (error) {
+        console.error('Error loading group data:', error);
+      }
+    }
+    navigate('/chat');
   };
 
   // Authentication check
@@ -243,8 +287,8 @@ const Index = () => {
               // User has existing group, go directly to chat
               handleGroupMatched(groupId, groupData);
             } else {
-              // No existing group, start matching
-              navigate('/chat');
+              // No existing group, try to load current group and go to chat
+              handleChatNavigation();
             }
           }}
           onViewProfile={handleProfileNavigation}
