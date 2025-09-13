@@ -48,6 +48,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ className, onGoHome })
   const [loading, setLoading] = useState(true);
   const [isEditingUsername, setIsEditingUsername] = useState(false);
   const [newUsername, setNewUsername] = useState('');
+  const [showOnlineStatus, setShowOnlineStatus] = useState(true);
   const [isEditingMood, setIsEditingMood] = useState(false);
   const [dailyMood, setDailyMood] = useState(5);
   const [moodEmoji, setMoodEmoji] = useState('😊');
@@ -78,6 +79,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ className, onGoHome })
         setMoodEmoji(profile.mood_emoji || '😊');
         setShowMoodEmoji(profile.show_mood_emoji || false);
         setLastMoodUpdate(profile.last_mood_update || null);
+        setShowOnlineStatus(profile.show_online_status !== false); // Default to true if null
       }
 
       // Load current group if any
@@ -249,6 +251,35 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ className, onGoHome })
       toast({
         title: "Error",
         description: "Failed to update mood display settings.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleOnlineStatusToggle = async () => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ 
+          show_online_status: !showOnlineStatus,
+          last_seen_at: new Date().toISOString()
+        })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      setShowOnlineStatus(!showOnlineStatus);
+      toast({
+        title: "Online Status Updated",
+        description: showOnlineStatus ? "You're now invisible to others" : "You're now visible to others",
+      });
+    } catch (error) {
+      console.error('Error updating online status:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update online status",
         variant: "destructive",
       });
     }
@@ -795,7 +826,10 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ className, onGoHome })
                     <h4 className="font-medium">Show Online Status</h4>
                     <p className="text-sm text-muted-foreground">Let others see when you're online</p>
                   </div>
-                  <Switch defaultChecked />
+                  <Switch 
+                    checked={showOnlineStatus}
+                    onCheckedChange={handleOnlineStatusToggle}
+                  />
                 </div>
                 
                 <div className="flex items-center justify-between">

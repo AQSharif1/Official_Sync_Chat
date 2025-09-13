@@ -5,11 +5,55 @@
 [build.environment]
   NODE_VERSION = "18"
 
+# Serve static assets directly
 [[redirects]]
   from = "/assets/*"
   to = "/assets/:splat"
   status = 200
 
+# Serve JavaScript files directly (including Vite chunks)
+[[redirects]]
+  from = "/*.js"
+  to = "/:splat"
+  status = 200
+
+# Handle Vite chunk files with hash names
+[[redirects]]
+  from = "/assets/*-*.js"
+  to = "/assets/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/*.css"
+  to = "/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/*.ico"
+  to = "/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/*.svg"
+  to = "/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/*.png"
+  to = "/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/*.jpg"
+  to = "/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/*.webp"
+  to = "/:splat"
+  status = 200
+
+# SPA fallback - only for non-asset requests
 [[redirects]]
   from = "/*"
   to = "/index.html"
@@ -23,6 +67,13 @@
 [[headers]]
   for = "*.js"
   [headers.values]
+    Content-Type = "application/javascript; charset=utf-8"
+    Cache-Control = "public, max-age=31536000"
+
+[[headers]]
+  for = "/assets/*.js"
+  [headers.values]
+    Content-Type = "application/javascript; charset=utf-8"
     Cache-Control = "public, max-age=31536000"
 
 [[headers]]

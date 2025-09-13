@@ -4,6 +4,7 @@ import { resolve } from 'path'
 
 export default defineConfig({
   plugins: [react()],
+  base: '/', // Explicitly set base path
   resolve: {
     alias: {
       '@': resolve(__dirname, 'src'),
@@ -14,5 +15,8 @@ export default defineConfig({
     rollupOptions: {
       external: [],
     },
+    // Ensure proper chunking and asset handling
+    assetsDir: 'assets',
+    sourcemap: false,
   },
 })

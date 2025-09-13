@@ -196,10 +196,6 @@ export const HomePage: React.FC<HomePageProps> = ({ onStartMatching, onViewProfi
         
         {/* Hero Section */}
         <div className="text-center space-y-6 py-12">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20">
-            <Sparkles className="w-4 h-4 text-primary" />
-            <span className="text-sm font-medium text-primary">Welcome to GroupMeet</span>
-          </div>
           
           <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-foreground via-primary to-primary/60 bg-clip-text text-transparent leading-tight">
             {getGreetingTime()}, {userProfile?.username || 'friend'}!
