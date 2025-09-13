@@ -138,7 +138,7 @@ const useDebounce = (func: Function, wait: number) => {
 export const VoiceRoomProvider: React.FC<VoiceRoomProviderProps> = ({ children }) => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { trackActivity } = useEngagement();
+  const { trackActivity, trackKarmaActivity } = useEngagement();
 
   // State
   const [state, setState] = useState<VoiceRoomState>({

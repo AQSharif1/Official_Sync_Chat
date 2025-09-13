@@ -4,7 +4,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Users, ArrowLeft, Trophy, Share2, Lightbulb, Home, Eraser, MessageCircle, MoreVertical, Settings, RefreshCw } from 'lucide-react';
+import { Users, ArrowLeft, ArrowRight, Trophy, Share2, Lightbulb, Home, Eraser, MessageCircle, MoreVertical, Settings, RefreshCw } from 'lucide-react';
 import { GroupMembersList } from './GroupMembersList';
 import { ChatInput } from './ChatInput';
 import { GroupSwitchDialog } from './GroupSwitchDialog';
@@ -339,7 +339,13 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
           createRiddle(randomRiddle.emojis, randomRiddle.answer, randomRiddle.hint, randomRiddle.funFact);
           break;
         case 'twoTruths':
-          setActiveView('create-truthlie');
+          // Create a random Two Truths & a Lie game directly
+          const randomStatements = [
+            "I have traveled to 5 different countries",
+            "I can speak 3 languages fluently", 
+            "I have never been on a roller coaster"
+          ];
+          createTruthLieGame(randomStatements, user?.id || '', userProfile.username);
           break;
       }
 
@@ -901,25 +907,88 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
         {/* Typing Indicator */}
         <TypingIndicator typingUsers={typingUsers} />
 
-        {/* Game Quick Picker - Show directly above chat input */}
+        {/* Game Selection - Show directly above chat input */}
         {activeView === 'game-picker' && (
           <div className="border-t border-border bg-muted/20 p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-medium text-foreground">Choose a Game</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-medium text-foreground">Select a Game</h3>
               <button 
                 onClick={() => setActiveView(null)}
-                className="text-muted-foreground hover:text-foreground"
+                className="text-muted-foreground hover:text-foreground text-lg"
               >
                 ✕
               </button>
             </div>
-            <GameQuickPicker 
-              onGameSelect={(gameType) => {
-                setActiveView(null);
-                handleToolSelect(gameType);
-              }}
-              disabled={false}
-            />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {/* Two Truths & a Lie */}
+              <button
+                onClick={() => {
+                  setActiveView(null);
+                  handleToolSelect('start-truthslie');
+                }}
+                className="p-4 text-left rounded-lg border border-border bg-background hover:bg-muted/50 transition-colors"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                    <span className="text-blue-500 text-sm">🎯</span>
+                  </div>
+                  <h4 className="font-medium text-foreground">Two Truths & a Lie</h4>
+                </div>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Share two true facts and one lie about yourself. Let others guess which is which!
+                </p>
+                <div className="flex items-center text-xs text-blue-500">
+                  <span>Start Game</span>
+                  <ArrowRight className="w-3 h-3 ml-1" />
+                </div>
+              </button>
+
+              {/* This or That */}
+              <button
+                onClick={() => {
+                  setActiveView(null);
+                  handleToolSelect('start-thisorthat');
+                }}
+                className="p-4 text-left rounded-lg border border-border bg-background hover:bg-muted/50 transition-colors"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-8 h-8 bg-green-500/20 rounded-lg flex items-center justify-center">
+                    <span className="text-green-500 text-sm">⚖️</span>
+                  </div>
+                  <h4 className="font-medium text-foreground">This or That</h4>
+                </div>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Quick choices: Pizza or Burgers? Summer or Winter? Books or Movies?
+                </p>
+                <div className="flex items-center text-xs text-green-500">
+                  <span>Ask Question</span>
+                  <ArrowRight className="w-3 h-3 ml-1" />
+                </div>
+              </button>
+
+              {/* Emoji Riddle */}
+              <button
+                onClick={() => {
+                  setActiveView(null);
+                  handleToolSelect('start-emojiriddle');
+                }}
+                className="p-4 text-left rounded-lg border border-border bg-background hover:bg-muted/50 transition-colors"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-8 h-8 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                    <span className="text-purple-500 text-sm">🧩</span>
+                  </div>
+                  <h4 className="font-medium text-foreground">Emoji Riddle</h4>
+                </div>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Guess what movie, song, or phrase these emojis represent! 🎬🍿
+                </p>
+                <div className="flex items-center text-xs text-purple-500">
+                  <span>Create Riddle</span>
+                  <ArrowRight className="w-3 h-3 ml-1" />
+                </div>
+              </button>
+            </div>
           </div>
         )}
 

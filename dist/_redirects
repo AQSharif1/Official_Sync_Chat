@@ -1,1 +1,4 @@
+# Redirect all non-asset requests to index.html for SPA routing
+# But don't redirect actual asset files (JS, CSS, images, etc.)
+/assets/*    /assets/:splat    200
 /*    /index.html   200
