@@ -204,7 +204,7 @@ export const useEnhancedKarma = () => {
 
     try {
       // Only save to database if we have a valid group_id
-      if (groupId) {
+      if (groupId && groupId.trim() !== '') {
         const { error } = await supabase.rpc('track_karma_activity', {
           p_user_id: user.id,
           p_group_id: groupId,
@@ -218,7 +218,7 @@ export const useEnhancedKarma = () => {
           console.error('Error tracking karma activity:', error);
         }
       } else {
-        console.warn('Cannot track karma activity: no group_id provided');
+        console.warn('Cannot track karma activity: no valid group_id provided', { groupId, type, points, description });
       }
     } catch (error) {
       console.error('Error tracking karma activity:', error);

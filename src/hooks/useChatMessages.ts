@@ -277,18 +277,22 @@ export const useChatMessages = (groupId: string) => {
 
       console.log('✅ Message inserted successfully:', data);
       
-      // Track karma activity for the message
-      try {
-        await supabase.rpc('track_karma_activity', {
-          p_user_id: user.id,
-          p_group_id: groupId,
-          p_activity_type: 'message',
-          p_points: 1,
-          p_description: 'Sent a message',
-          p_multiplier: 1.0
-        });
-      } catch (karmaError) {
-        console.warn('Failed to track karma for message:', karmaError);
+      // Track karma activity for the message (only if groupId is valid)
+      if (groupId && groupId.trim() !== '') {
+        try {
+          await supabase.rpc('track_karma_activity', {
+            p_user_id: user.id,
+            p_group_id: groupId,
+            p_activity_type: 'message',
+            p_points: 1,
+            p_description: 'Sent a message',
+            p_multiplier: 1.0
+          });
+        } catch (karmaError) {
+          console.warn('Failed to track karma for message:', karmaError);
+        }
+      } else {
+        console.warn('Cannot track karma for message: invalid groupId', { groupId });
       }
       
       // Don't refetch here - let real-time handle it
@@ -345,8 +349,8 @@ export const useChatMessages = (groupId: string) => {
         if (error) throw error;
         console.log('Reaction added');
         
-        // Track karma activity for the reaction
-        if (messageData?.group_id) {
+        // Track karma activity for the reaction (only if group_id is valid)
+        if (messageData?.group_id && messageData.group_id.trim() !== '') {
           try {
             await supabase.rpc('track_karma_activity', {
               p_user_id: user.id,
@@ -359,6 +363,8 @@ export const useChatMessages = (groupId: string) => {
           } catch (karmaError) {
             console.warn('Failed to track karma for reaction:', karmaError);
           }
+        } else {
+          console.warn('Cannot track karma for reaction: invalid group_id', { group_id: messageData?.group_id });
         }
       }
 

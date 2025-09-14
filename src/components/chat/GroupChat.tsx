@@ -14,6 +14,8 @@ import { PinnedMessagesPanel } from './PinnedMessagesPanel';
 import { MessageBubble } from './MessageBubble';
 import { CollapsibleVoiceRoom } from './CollapsibleVoiceRoom';
 import { GameQuickPicker } from './GameQuickPicker';
+import { GameParticipationDialog } from './GameParticipationDialog';
+import { ActiveGameDisplay } from './ActiveGameDisplay';
 
 import { ChatPoll, CreatePoll } from './ChatPoll';
 import { PlaylistBuilder, CreatePlaylist } from './PlaylistBuilder';
@@ -106,6 +108,8 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
   const [showSwitchDialog, setShowSwitchDialog] = useState(false);
   const [activeGame, setActiveGame] = useState<ActiveGameState | null>(null);
   const [showDMModal, setShowDMModal] = useState(false);
+  const [showParticipationDialog, setShowParticipationDialog] = useState(false);
+  const [pendingGame, setPendingGame] = useState<{ gameType: string; duration: number } | null>(null);
   
   // Use database-based cleared messages instead of localStorage
   const { clearedMessageIds, clearMessages, isMessageCleared } = useClearedMessages(groupId);
@@ -317,7 +321,7 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
     }
   }, [user, groupId, loadUserProfile, fetchActualMemberCount, loadGroupKarma]);
 
-  const handleStartGame = (gameType: ActiveGameState['gameType']) => {
+  const handleStartGame = (gameType: ActiveGameState['gameType'], duration?: number) => {
     if (!userProfile) return;
     
     // Don't start game if preferences are still loading
@@ -330,98 +334,130 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
       return;
     }
     
-    console.log('Starting game with duration:', gamePreferences.gameDuration, 'minutes');
+    const gameDuration = duration || gamePreferences.gameDuration;
+    console.log('Starting game with duration:', gameDuration, 'minutes');
     
-    const success = gameTimerManager.startGame(
-      gameType,
-      crypto.randomUUID(),
-      gamePreferences.gameDuration,
-      {
-        onTimeEnd: () => {
-          // Auto-end game when time expires
-          setActiveGame(null);
-          toast({
-            title: "Game Ended",
-            description: "Round completed - results posted!",
-          });
-        },
-        onTick: (remaining) => {
-          // Update active game state for UI
-          const current = gameTimerManager.getActiveGame();
-          if (current) {
-            setActiveGame({ ...current });
-          }
-        }
-      }
-    );
-
-    if (success) {
-      const newActiveGame = gameTimerManager.getActiveGame();
-      setActiveGame(newActiveGame);
-      
-      // Start the appropriate game
-      switch (gameType) {
-        case 'thisorthat':
-          const randomTOT = THIS_OR_THAT_PROMPTS[Math.floor(Math.random() * THIS_OR_THAT_PROMPTS.length)];
-          // Extract optionA and optionB from the options array with validation
-          const optionA = randomTOT.options[0]?.text || '';
-          const optionB = randomTOT.options[1]?.text || '';
-          
-          // Validate that we have both options before creating the game
-          if (!optionA || !optionB) {
-            console.error('Invalid This or That prompt: missing options', randomTOT);
-            toast({
-              title: "Game Error",
-              description: "Failed to create game - invalid prompt data",
-              variant: "destructive",
-            });
-            return;
-          }
-          
-          createTOTPrompt(randomTOT.question, optionA, optionB);
-          break;
-        case 'emojiriddle':
-          const randomRiddle = EMOJI_RIDDLES[Math.floor(Math.random() * EMOJI_RIDDLES.length)];
-          createRiddle(randomRiddle.emojis, randomRiddle.answer, randomRiddle.hint, randomRiddle.funFact);
-          break;
-        case 'twoTruths':
-          // Create a random Two Truths & a Lie game directly
-          const randomStatements = [
-            "I have traveled to 5 different countries",
-            "I can speak 3 languages fluently", 
-            "I have never been on a roller coaster"
-          ];
-          const lieStatementNumber = Math.floor(Math.random() * 3) + 1; // 1, 2, or 3
-          createTruthLieGame(randomStatements, lieStatementNumber);
-          break;
-      }
-
-      trackActivity('tool');
-      const getGameTypeDisplayName = (type: string) => {
-        switch (type) {
-          case 'thisorthat': return 'This or That';
-          case 'emojiriddle': return 'Emoji Riddle';
-          case 'twoTruths': return 'Two Truths & a Lie';
-          default: return type;
-        }
-      };
-
-      const getDurationText = (minutes: number) => {
-        if (minutes === 1) return '1 minute';
-        return `${minutes} minutes`;
-      };
-
+    // Check if another game is already active
+    if (activeGame) {
       toast({
-        title: "Game Started",
-        description: `${getGameTypeDisplayName(gameType)} round is now active for ${getDurationText(gamePreferences.gameDuration)}!`,
-      });
-    } else {
-      toast({
-        title: "Cannot Start Game",
-        description: "A round is already active.",
+        title: "Game Already Active",
+        description: "Please wait for the current game to finish before starting a new one.",
         variant: "destructive",
       });
+      return;
     }
+    
+    // Show participation dialog for group members
+    setPendingGame({ gameType, duration: gameDuration });
+    setShowParticipationDialog(true);
+  };
+
+  const handleGameParticipation = (participate: boolean) => {
+    if (!pendingGame || !userProfile) return;
+    
+    setShowParticipationDialog(false);
+    
+    if (participate) {
+      const success = gameTimerManager.startGame(
+        pendingGame.gameType as ActiveGameState['gameType'],
+        crypto.randomUUID(),
+        pendingGame.duration,
+        {
+          onTimeEnd: () => {
+            // Auto-end game when time expires
+            setActiveGame(null);
+            toast({
+              title: "Game Ended",
+              description: "Round completed - results posted!",
+            });
+          },
+          onTick: (remaining) => {
+            // Update active game state for UI
+            const current = gameTimerManager.getActiveGame();
+            if (current) {
+              setActiveGame({ ...current });
+            }
+          }
+        }
+      );
+
+      if (success) {
+        const newActiveGame = gameTimerManager.getActiveGame();
+        if (newActiveGame) {
+          setActiveGame(newActiveGame);
+          
+          // Start the appropriate game
+          switch (pendingGame.gameType) {
+            case 'thisorthat':
+              const randomTOT = THIS_OR_THAT_PROMPTS[Math.floor(Math.random() * THIS_OR_THAT_PROMPTS.length)];
+              const optionA = randomTOT.options[0]?.text || '';
+              const optionB = randomTOT.options[1]?.text || '';
+              
+              if (!optionA || !optionB) {
+                console.error('Invalid This or That prompt: missing options', randomTOT);
+                toast({
+                  title: "Game Error",
+                  description: "Failed to create game - invalid prompt data",
+                  variant: "destructive",
+                });
+                return;
+              }
+              
+              createTOTPrompt(randomTOT.question, optionA, optionB);
+              break;
+            case 'emojiriddle':
+              const randomRiddle = EMOJI_RIDDLES[Math.floor(Math.random() * EMOJI_RIDDLES.length)];
+              createRiddle(randomRiddle.emojis, randomRiddle.answer, randomRiddle.hint, randomRiddle.funFact);
+              break;
+            case 'twoTruths':
+              const randomStatements = [
+                "I have traveled to 5 different countries",
+                "I can speak 3 languages fluently", 
+                "I have never been on a roller coaster"
+              ];
+              const lieStatementNumber = Math.floor(Math.random() * 3) + 1;
+              createTruthLieGame(randomStatements, lieStatementNumber);
+              break;
+          }
+
+          trackActivity('tool');
+          const getGameTypeDisplayName = (type: string) => {
+            switch (type) {
+              case 'thisorthat': return 'This or That';
+              case 'emojiriddle': return 'Emoji Riddle';
+              case 'twoTruths': return 'Two Truths & a Lie';
+              default: return type;
+            }
+          };
+
+          const getDurationText = (minutes: number) => {
+            if (minutes === 1) return '1 minute';
+            return `${minutes} minutes`;
+          };
+
+          toast({
+            title: "Game Started",
+            description: `${getGameTypeDisplayName(pendingGame.gameType)} round is now active for ${getDurationText(pendingGame.duration)}!`,
+          });
+        }
+      }
+    } else {
+      toast({
+        title: "Game Declined",
+        description: "No problem! You can join the next game when it starts.",
+      });
+    }
+    
+    setPendingGame(null);
+  };
+
+  const handleExitGame = () => {
+    gameTimerManager.endGame();
+    setActiveGame(null);
+    toast({
+      title: "Left Game",
+      description: "You've left the current game session.",
+    });
   };
 
   const handleEndGame = () => {
@@ -712,9 +748,9 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
       case 'game-picker':
         return (
           <GameQuickPicker 
-            onGameSelect={(gameType) => {
+            onGameSelect={(gameType, duration) => {
               setActiveView(null);
-              handleToolSelect(gameType);
+              handleStartGame(gameType as ActiveGameState['gameType'], duration);
             }}
             disabled={false}
           />
@@ -912,6 +948,16 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
                     currentUserId={user?.id}
                   />
                 ))
+            )}
+
+            {/* Active Game Display */}
+            {activeGame && (
+              <ActiveGameDisplay
+                game={activeGame}
+                onExit={handleExitGame}
+                currentUserId={user?.id || ''}
+                currentUsername={userProfile?.username || 'Anonymous'}
+              />
             )}
 
             {/* Active Games Section - Moved to bottom */}
@@ -1125,6 +1171,19 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
         onOpenChange={setShowDMModal}
         groupId={groupId}
       />
+
+      {/* Game Participation Dialog */}
+      {showParticipationDialog && pendingGame && (
+        <GameParticipationDialog
+          isOpen={showParticipationDialog}
+          onClose={() => setShowParticipationDialog(false)}
+          onParticipate={() => handleGameParticipation(true)}
+          onDecline={() => handleGameParticipation(false)}
+          gameType={pendingGame.gameType}
+          gameDuration={pendingGame.duration}
+          creatorUsername={userProfile?.username || 'Anonymous'}
+        />
+      )}
     </>
   );
 };

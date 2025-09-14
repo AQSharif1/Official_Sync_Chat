@@ -182,7 +182,7 @@ export const useAccountManagement = () => {
               p_email: email.toLowerCase().trim()
             });
             
-            if (resignupCheck?.is_resignup) {
+            if (resignupCheck?.action === 'resend_verification') {
               console.log('📧 Confirmed re-signup scenario, sending verification...');
             }
           } catch (rpcError) {
