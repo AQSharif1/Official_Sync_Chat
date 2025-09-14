@@ -75,7 +75,11 @@ export const KarmaDashboard: React.FC = () => {
 
         // Get group leaderboard
         const { data: leaderboard } = await supabase
-          .rpc('get_group_karma_leaderboard');
+          .rpc('get_group_user_karma_leaderboard', {
+            p_group_id: groupMembership.group_id,
+            p_limit: 20,
+            p_offset: 0
+          });
         
         if (leaderboard) {
           setGroupLeaderboard(leaderboard);
@@ -84,7 +88,9 @@ export const KarmaDashboard: React.FC = () => {
         // Get user ranking within current group
         const { data: userRanking } = await supabase
           .rpc('get_group_user_karma_leaderboard', {
-            p_group_id: groupMembership.groups.id
+            p_group_id: groupMembership.groups.id,
+            p_limit: 100,
+            p_offset: 0
           });
         
         if (userRanking) {

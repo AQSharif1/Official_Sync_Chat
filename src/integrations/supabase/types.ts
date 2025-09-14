@@ -1123,6 +1123,36 @@ export type Database = {
         Args: { _group_id: string; _user_id: string }
         Returns: boolean
       }
+      delete_user_account: {
+        Args: { p_user_id: string }
+        Returns: Json
+      }
+      email_exists: {
+        Args: { check_email: string }
+        Returns: boolean
+      }
+      handle_resignup_verification: {
+        Args: { p_email: string }
+        Returns: Json
+      }
+      extend_account_by_completing_onboarding: {
+        Args: { 
+          p_user_id: string; 
+          p_username: string; 
+          p_genres: string[]; 
+          p_personality: string[]; 
+          p_bio: string 
+        }
+        Returns: Json
+      }
+      user_has_leave_opportunity: {
+        Args: { p_user_id: string; p_group_id: string }
+        Returns: boolean
+      }
+      use_leave_opportunity: {
+        Args: { p_user_id: string; p_group_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

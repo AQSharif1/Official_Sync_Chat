@@ -82,7 +82,7 @@ export const useAccountCleanup = () => {
         p_username: profileData.username,
         p_genres: profileData.genres,
         p_personality: profileData.personality,
-        p_habits: profileData.habits
+        p_bio: profileData.habits.join(', ') // Convert habits array to bio string
       });
 
       if (error) throw error;

@@ -30,8 +30,7 @@ export const validateGroupAssignmentSystem = async (): Promise<ValidationResult>
   // Check 1: Verify RPC function exists
   try {
     const { data, error } = await supabase.rpc('join_group_safe', {
-      user_id: '00000000-0000-0000-0000-000000000000',
-      group_id: '00000000-0000-0000-0000-000000000000'
+      p_group_id: '00000000-0000-0000-0000-000000000000'
     });
     
     if (error && error.message.includes('function "join_group_safe" does not exist')) {
@@ -152,8 +151,7 @@ export const validateGroupAssignmentSystem = async (): Promise<ValidationResult>
   // Check 8: Verify function permissions
   try {
     const { data, error } = await supabase.rpc('join_group_safe', {
-      user_id: '00000000-0000-0000-0000-000000000000',
-      group_id: '00000000-0000-0000-0000-000000000000'
+      p_group_id: '00000000-0000-0000-0000-000000000000'
     });
     
     if (error && error.message.includes('permission denied')) {

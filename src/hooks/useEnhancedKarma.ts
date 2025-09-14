@@ -203,18 +203,22 @@ export const useEnhancedKarma = () => {
     setRecentActivity(prev => [activity, ...prev.slice(0, 9)]); // Keep last 10 activities
 
     try {
-      // Save to database using the track_karma_activity RPC function
-      const { error } = await supabase.rpc('track_karma_activity', {
-        p_user_id: user.id,
-        p_group_id: groupId || null,
-        p_activity_type: type,
-        p_points: points,
-        p_description: description,
-        p_multiplier: multiplier || 1.0
-      });
+      // Only save to database if we have a valid group_id
+      if (groupId) {
+        const { error } = await supabase.rpc('track_karma_activity', {
+          p_user_id: user.id,
+          p_group_id: groupId,
+          p_activity_type: type,
+          p_points: points,
+          p_description: description,
+          p_multiplier: multiplier || 1.0
+        });
 
-      if (error) {
-        console.error('Error tracking karma activity:', error);
+        if (error) {
+          console.error('Error tracking karma activity:', error);
+        }
+      } else {
+        console.warn('Cannot track karma activity: no group_id provided');
       }
     } catch (error) {
       console.error('Error tracking karma activity:', error);
@@ -263,7 +267,8 @@ export const useEnhancedKarma = () => {
     const multiplier = engagement.is_premium ? 2 : 1;
     const finalPoints = basePoints * multiplier;
 
-    await trackKarmaActivity(karmaType, finalPoints, description, multiplier > 1 ? multiplier : undefined);
+    // Note: trackKarmaActivity requires group context, so we only call trackActivity here
+    // Specific karma tracking should be done in components that have group context
     
     // Call original tracking function
     await trackActivity(activityType);
