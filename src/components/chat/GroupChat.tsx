@@ -61,8 +61,7 @@ import { GroupNameManagement } from './GroupNameManagement';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { ResponsiveModal } from '@/components/ui/responsive-modal';
 import { ActiveGameState, gameTimerManager } from '@/utils/gameTimerManager';
-import { loadGamePreferences } from '@/utils/gamePreferences';
-// Game preferences managed via GameQuickPicker component
+// Game preferences managed via useGamePreferences hook
 
 import { DMModal } from './DMModal';
 
@@ -131,8 +130,8 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
   });
 
   // New engagement and daily prompts hooks
-  const { engagement, achievements, trackActivity, trackKarmaActivity } = useEngagement();
-  const { trackEnhancedActivity } = useEnhancedKarma();
+  const { engagement, achievements, trackActivity } = useEngagement();
+  const { trackKarmaActivity, trackEnhancedActivity } = useEnhancedKarma();
   const { getTodaysPrompt } = useDailyPrompts();
   const { validateMessageContent, checkRateLimit, sanitizeInput } = useInputValidation();
   const { trackError, trackUserAction } = usePerformanceMonitor();
@@ -155,7 +154,7 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
   } = useDatabaseGames(groupId);
 
   // Use database game preferences instead of localStorage
-  const { preferences: gamePreferences } = useGamePreferences();
+  const { preferences: gamePreferences, loading: preferencesLoading } = useGamePreferences();
 
 
 
@@ -321,6 +320,18 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
   const handleStartGame = (gameType: ActiveGameState['gameType']) => {
     if (!userProfile) return;
     
+    // Don't start game if preferences are still loading
+    if (preferencesLoading) {
+      toast({
+        title: "Loading...",
+        description: "Please wait while preferences are loading.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    console.log('Starting game with duration:', gamePreferences.gameDuration, 'minutes');
+    
     const success = gameTimerManager.startGame(
       gameType,
       crypto.randomUUID(),
@@ -352,7 +363,22 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
       switch (gameType) {
         case 'thisorthat':
           const randomTOT = THIS_OR_THAT_PROMPTS[Math.floor(Math.random() * THIS_OR_THAT_PROMPTS.length)];
-          createTOTPrompt(randomTOT.question, randomTOT.options);
+          // Extract optionA and optionB from the options array with validation
+          const optionA = randomTOT.options[0]?.text || '';
+          const optionB = randomTOT.options[1]?.text || '';
+          
+          // Validate that we have both options before creating the game
+          if (!optionA || !optionB) {
+            console.error('Invalid This or That prompt: missing options', randomTOT);
+            toast({
+              title: "Game Error",
+              description: "Failed to create game - invalid prompt data",
+              variant: "destructive",
+            });
+            return;
+          }
+          
+          createTOTPrompt(randomTOT.question, optionA, optionB);
           break;
         case 'emojiriddle':
           const randomRiddle = EMOJI_RIDDLES[Math.floor(Math.random() * EMOJI_RIDDLES.length)];
@@ -371,9 +397,23 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
       }
 
       trackActivity('tool');
+      const getGameTypeDisplayName = (type: string) => {
+        switch (type) {
+          case 'thisorthat': return 'This or That';
+          case 'emojiriddle': return 'Emoji Riddle';
+          case 'twoTruths': return 'Two Truths & a Lie';
+          default: return type;
+        }
+      };
+
+      const getDurationText = (minutes: number) => {
+        if (minutes === 1) return '1 minute';
+        return `${minutes} minutes`;
+      };
+
       toast({
         title: "Game Started",
-        description: `${gameType} round is now active for ${gamePreferences.gameDuration} minutes!`,
+        description: `${getGameTypeDisplayName(gameType)} round is now active for ${getDurationText(gamePreferences.gameDuration)}!`,
       });
     } else {
       toast({
@@ -478,7 +518,7 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
 
       if (success) {
         // Track engagement and user action
-        trackActivity('message');
+        trackEnhancedActivity('message');
         trackUserAction('send_text_message');
         
         return true;
@@ -544,7 +584,7 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
 
       if (success) {
         // Track karma for voice note with group ID
-        trackKarmaActivity(groupId, 'voice_note', 2, 'Sent voice message', 1.0);
+        trackKarmaActivity('voice', 2, 'Sent voice message', 1.0, groupId);
         
         return true;
       } else {

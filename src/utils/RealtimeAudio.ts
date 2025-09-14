@@ -359,7 +359,14 @@ export class RealtimeVoiceChat {
       this.audioContext = await this.audioContextManager.getContext();
       
       // Use WebSocket pool to prevent multiple connections
-      this.wsUrl = `wss://${import.meta.env.VITE_SUPABASE_URL?.replace('https://', '') || 'your-project'}.functions.supabase.co/realtime-voice-chat`;
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      if (!supabaseUrl) {
+        throw new Error('VITE_SUPABASE_URL environment variable is not set');
+      }
+      
+      // Extract project ID from Supabase URL
+      const projectId = supabaseUrl.replace('https://', '').replace('.supabase.co', '');
+      this.wsUrl = `wss://${projectId}.functions.supabase.co/realtime-voice-chat`;
       this.ws = WebSocketPool.getConnection(this.wsUrl);
 
       this.ws.onopen = () => {

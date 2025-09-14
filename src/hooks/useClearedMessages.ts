@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -6,6 +6,7 @@ export const useClearedMessages = (groupId: string) => {
   const { user } = useAuth();
   const [clearedMessageIds, setClearedMessageIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
+  const sessionIdRef = useRef<string | null>(null);
 
   // Load cleared messages from database
   const loadClearedMessages = useCallback(async () => {
@@ -74,16 +75,68 @@ export const useClearedMessages = (groupId: string) => {
     return clearedMessageIds.has(messageId);
   }, [clearedMessageIds]);
 
+  // Clear all cleared messages for user (called on logout)
+  const clearAllClearedMessages = useCallback(async () => {
+    if (!user?.id) return;
+
+    try {
+      const { error } = await supabase
+        .from('user_cleared_messages')
+        .delete()
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      setClearedMessageIds(new Set());
+    } catch (error) {
+      console.error('Error clearing all cleared messages:', error);
+    }
+  }, [user?.id]);
+
   // Load cleared messages on mount and when group changes
   useEffect(() => {
-    loadClearedMessages();
-  }, [loadClearedMessages]);
+    if (user?.id && groupId) {
+      // Check if this is a new session
+      const currentSessionId = user.id + '_' + Date.now();
+      const isNewSession = sessionIdRef.current !== currentSessionId;
+      
+      if (isNewSession) {
+        // Clear previous session's cleared messages
+        setClearedMessageIds(new Set());
+        sessionIdRef.current = currentSessionId;
+      }
+      
+      loadClearedMessages();
+    }
+  }, [loadClearedMessages, user?.id, groupId]);
+
+  // Clear cleared messages when user logs out
+  useEffect(() => {
+    if (!user?.id) {
+      setClearedMessageIds(new Set());
+      sessionIdRef.current = null;
+    }
+  }, [user?.id]);
+
+  // Listen for logout events
+  useEffect(() => {
+    const handleLogout = () => {
+      setClearedMessageIds(new Set());
+      sessionIdRef.current = null;
+    };
+
+    window.addEventListener('auth:logout', handleLogout);
+    return () => window.removeEventListener('auth:logout', handleLogout);
+  }, []);
 
   return {
     clearedMessageIds,
     loading,
     clearMessages,
     isMessageCleared,
-    loadClearedMessages
+    loadClearedMessages,
+    clearAllClearedMessages
   };
 };
+
+

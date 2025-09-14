@@ -128,3 +128,8 @@ export const useGamePreferences = () => {
     loadPreferences
   };
 };
+
+// Helper function to check if any games are enabled
+export const hasAnyGameEnabled = (prefs: GamePreferences): boolean =>
+  prefs.enabledGames.thisOrThat || prefs.enabledGames.emojiRiddle || prefs.enabledGames.twoTruths;
+

@@ -186,8 +186,11 @@ export const useEnhancedKarma = () => {
     type: KarmaActivity['type'], 
     points: number, 
     description: string,
-    multiplier?: number
+    multiplier?: number,
+    groupId?: string
   ) => {
+    if (!user) return;
+
     const activity: KarmaActivity = {
       type,
       points,
@@ -196,13 +199,32 @@ export const useEnhancedKarma = () => {
       multiplier
     };
 
+    // Update local state immediately for UI responsiveness
     setRecentActivity(prev => [activity, ...prev.slice(0, 9)]); // Keep last 10 activities
+
+    try {
+      // Save to database using the track_karma_activity RPC function
+      const { error } = await supabase.rpc('track_karma_activity', {
+        p_user_id: user.id,
+        p_group_id: groupId || null,
+        p_activity_type: type,
+        p_points: points,
+        p_description: description,
+        p_multiplier: multiplier || 1.0
+      });
+
+      if (error) {
+        console.error('Error tracking karma activity:', error);
+      }
+    } catch (error) {
+      console.error('Error tracking karma activity:', error);
+    }
 
     // Track the activity using existing system
     if (type === 'message' || type === 'reaction') {
       await trackActivity(type as 'message' | 'reaction');
     }
-  }, [trackActivity]);
+  }, [trackActivity, user]);
 
   // Enhanced activity tracking with karma points calculation
   const trackEnhancedActivity = useCallback(async (activityType: 'message' | 'reaction' | 'tool' | 'voice' | 'game') => {
@@ -247,6 +269,34 @@ export const useEnhancedKarma = () => {
     await trackActivity(activityType);
   }, [user, engagement, trackKarmaActivity, trackActivity]);
 
+  // Fetch recent karma activities from database
+  const fetchRecentActivities = useCallback(async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('karma_activities')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+
+      const activities: KarmaActivity[] = data?.map(item => ({
+        type: item.activity_type as KarmaActivity['type'],
+        points: item.points_earned,
+        description: item.description,
+        timestamp: new Date(item.created_at),
+        multiplier: item.multiplier
+      })) || [];
+
+      setRecentActivity(activities);
+    } catch (error) {
+      console.error('Error fetching recent activities:', error);
+    }
+  }, [user]);
+
   // Update karma progress when engagement data changes
   useEffect(() => {
     if (engagement) {
@@ -255,6 +305,13 @@ export const useEnhancedKarma = () => {
       setLoading(false);
     }
   }, [engagement, calculateKarmaProgress]);
+
+  // Load recent activities on mount
+  useEffect(() => {
+    if (user) {
+      fetchRecentActivities();
+    }
+  }, [user, fetchRecentActivities]);
 
   // Get achievements with enhanced categorization
   const enhancedAchievements = achievements ? categorizeAchievements(achievements) : [];
@@ -315,6 +372,7 @@ export const useEnhancedKarma = () => {
     // Activity tracking
     trackEnhancedActivity,
     trackKarmaActivity,
+    fetchRecentActivities,
 
     // Constants
     KARMA_LEVELS

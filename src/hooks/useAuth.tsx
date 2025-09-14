@@ -132,9 +132,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    // Clear any local state/memory on logout
+    // Clear any local state/memory on logout before signing out
     window.dispatchEvent(new CustomEvent('auth:logout'));
+    await supabase.auth.signOut();
   };
 
   const resendVerification = async (email: string) => {

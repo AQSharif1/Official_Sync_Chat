@@ -28,16 +28,22 @@ const Index = () => {
   // Simple back button handler with error handling
   const handleBack = () => {
     try {
-      // Use browser's natural back navigation
-      if (window.history.length > 1) {
-        window.history.back();
+      // Check current tab and navigate accordingly
+      if (activeTab === 'chat') {
+        setActiveTab('home');
+        navigate('/home');
+      } else if (activeTab === 'profile' || activeTab === 'settings') {
+        setActiveTab('home');
+        navigate('/home');
       } else {
-        // If no history, go to home
+        // Default fallback
+        setActiveTab('home');
         navigate('/home');
       }
     } catch (error) {
       console.error('Error in back navigation:', error);
       // Fallback to home
+      setActiveTab('home');
       navigate('/home');
     }
   };
@@ -56,8 +62,10 @@ const Index = () => {
   // Sync activeTab with URL changes (for browser back/forward)
   useEffect(() => {
     const newTab = getCurrentTab();
-    setActiveTab(newTab);
-  }, [location.pathname]);
+    if (newTab !== activeTab) {
+      setActiveTab(newTab);
+    }
+  }, [location.pathname, activeTab]);
 
   const handleCompleteOnboarding = async () => {
     try {
@@ -90,20 +98,24 @@ const Index = () => {
         // Silent error handling for production
       }
     }
+    setActiveTab('chat');
     navigate('/chat');
   };
 
   const handleBackToMatching = () => {
     // Don't clear currentGroup - keep it for easy return to chat
+    setActiveTab('home');
     navigate('/home');
   };
 
 
   const handleProfileNavigation = () => {
+    setActiveTab('profile');
     navigate('/profile');
   };
 
   const handleSettingsNavigation = () => {
+    setActiveTab('settings');
     navigate('/settings');
   };
 

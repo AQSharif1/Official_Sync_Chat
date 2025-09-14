@@ -146,31 +146,6 @@ export const useEngagement = () => {
     }
   };
 
-  const trackKarmaActivity = async (groupId: string, activityType: string, points: number = 1, description: string = '', multiplier: number = 1.0) => {
-    if (!user) return;
-
-    try {
-      const { error } = await supabase.rpc('track_karma_activity', {
-        p_user_id: user.id,
-        p_group_id: groupId,
-        p_activity_type: activityType,
-        p_points: points,
-        p_description: description,
-        p_multiplier: multiplier
-      });
-
-      if (error) {
-        console.error('Error tracking karma activity:', error);
-        return;
-      }
-
-      // Refresh data after tracking
-      await fetchEngagementData();
-      await fetchAchievements();
-    } catch (error) {
-      console.error('Error tracking karma activity:', error);
-    }
-  };
 
   // Get group leaderboard for karma points
   const getGroupKarmaLeaderboard = async (groupId: string, limit: number = 20, offset: number = 0) => {
@@ -200,7 +175,6 @@ export const useEngagement = () => {
     achievements,
     loading,
     trackActivity,
-    trackKarmaActivity,
     getGroupKarmaLeaderboard,
     refresh: () => {
       fetchEngagementData();

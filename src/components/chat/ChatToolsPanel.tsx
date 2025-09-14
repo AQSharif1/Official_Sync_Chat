@@ -9,14 +9,13 @@ import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { BarChart3, Music, MessageCircle, Gamepad2, Sparkles, Smile, MessageSquare, Zap, Settings } from 'lucide-react';
+import { BarChart3, Music, MessageCircle, Gamepad2, Sparkles, Smile, MessageSquare, Zap, Settings, Clock } from 'lucide-react';
 import { 
   GamePreferences, 
-  loadGamePreferences, 
-  saveGamePreferences, 
   hasAnyGameEnabled,
   DEFAULT_GAME_PREFERENCES 
-} from '@/utils/gamePreferences';
+} from '@/hooks/useGamePreferences';
+import { useGamePreferences } from '@/hooks/useGamePreferences';
 interface ChatToolsPanelProps {
   onToolSelect: (tool: string) => void;
   isOpen: boolean;
@@ -28,14 +27,10 @@ export const ChatToolsPanel = ({
   onToggle
 }: ChatToolsPanelProps) => {
   const { toast } = useToast();
-  const [gamePrefs, setGamePrefs] = useState<GamePreferences>(DEFAULT_GAME_PREFERENCES);
   const [showGamePrefs, setShowGamePrefs] = useState(false);
-
-  // Load preferences on mount
-  useEffect(() => {
-    const prefs = loadGamePreferences();
-    setGamePrefs(prefs);
-  }, []);
+  
+  // Use database preferences instead of localStorage
+  const { preferences: gamePrefs, updateEnabledGames, updateGameDuration, loading } = useGamePreferences();
 
   // Clear timers on tab/group change via page visibility
   useEffect(() => {
@@ -51,25 +46,12 @@ export const ChatToolsPanel = ({
     };
   }, []);
 
-  const handleGamePrefChange = (key: keyof GamePreferences['enabledGames'], value: boolean) => {
-    const newPrefs = {
-      ...gamePrefs,
-      enabledGames: {
-        ...gamePrefs.enabledGames,
-        [key]: value,
-      },
-    };
-    setGamePrefs(newPrefs);
-    saveGamePreferences(newPrefs);
+  const handleGamePrefChange = async (key: keyof GamePreferences['enabledGames'], value: boolean) => {
+    await updateEnabledGames(key, value);
   };
 
-  const handleDurationChange = (value: number[]) => {
-    const newPrefs = {
-      ...gamePrefs,
-      gameDuration: value[0],
-    };
-    setGamePrefs(newPrefs);
-    saveGamePreferences(newPrefs);
+  const handleDurationChange = async (value: number[]) => {
+    await updateGameDuration(value[0]);
   };
 
   const handleGamePrefsClose = () => {
@@ -209,28 +191,64 @@ export const ChatToolsPanel = ({
                       
                       <Separator />
                       
-                      <div className="space-y-3">
-                        <Label className="text-sm font-medium">
-                          Game Duration: {gamePrefs.gameDuration} minutes
-                        </Label>
-                        <Slider
-                          value={[gamePrefs.gameDuration]}
-                          onValueChange={handleDurationChange}
-                          min={1}
-                          max={10}
-                          step={1}
-                          className="w-full"
-                          aria-label="Game duration in minutes"
-                        />
-                        <div className="flex justify-between text-xs text-muted-foreground">
-                          <span>1 min</span>
-                          <span>10 min</span>
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-sm font-medium">
+                            Game Duration: {gamePrefs.gameDuration} {gamePrefs.gameDuration === 1 ? 'minute' : 'minutes'}
+                          </Label>
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <Clock className="h-3 w-3" />
+                            <span>Timer</span>
+                          </div>
+                        </div>
+                        
+                        {/* Quick preset buttons */}
+                        <div className="grid grid-cols-2 gap-2">
+                          {[
+                            { value: 1, label: '1 min', desc: 'Quick' },
+                            { value: 3, label: '3 min', desc: 'Fast' },
+                            { value: 5, label: '5 min', desc: 'Normal' },
+                            { value: 10, label: '10 min', desc: 'Long' }
+                          ].map((preset) => (
+                            <Button
+                              key={preset.value}
+                              variant={gamePrefs.gameDuration === preset.value ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => handleDurationChange([preset.value])}
+                              className="h-auto p-2 flex flex-col items-center gap-1"
+                            >
+                              <span className="font-medium">{preset.label}</span>
+                              <span className="text-xs text-muted-foreground">{preset.desc}</span>
+                            </Button>
+                          ))}
+                        </div>
+                        
+                        {/* Custom slider */}
+                        <div className="space-y-2">
+                          <Label className="text-xs text-muted-foreground">Custom duration</Label>
+                          <Slider
+                            value={[gamePrefs.gameDuration]}
+                            onValueChange={handleDurationChange}
+                            min={1}
+                            max={10}
+                            step={1}
+                            className="w-full"
+                            aria-label="Game duration in minutes"
+                          />
+                          <div className="flex justify-between text-xs text-muted-foreground">
+                            <span>1 min</span>
+                            <span>10 min</span>
+                          </div>
                         </div>
                       </div>
                       
                       <div className="pt-2">
-                        <Button onClick={handleGamePrefsClose} className="w-full">
-                          Save Preferences
+                        <Button 
+                          onClick={handleGamePrefsClose} 
+                          className="w-full"
+                          disabled={loading}
+                        >
+                          {loading ? "Saving..." : "Save Preferences"}
                         </Button>
                       </div>
                     </div>
@@ -252,19 +270,27 @@ export const ChatToolsPanel = ({
                     <Button 
                       key={tool.id} 
                       variant="ghost" 
-                      className={`h-auto p-3 flex flex-col items-center gap-2 text-center hover:bg-muted/50 ${isDisabled ? 'opacity-50' : ''}`}
+                      className={`h-auto p-3 flex flex-col items-center gap-2 text-center hover:bg-muted/50 ${isDisabled || loading ? 'opacity-50' : ''}`}
                       onClick={() => handleToolSelect(tool.id)}
-                      disabled={isDisabled}
+                      disabled={isDisabled || loading}
                     >
-                      <IconComponent className={`h-5 w-5 ${tool.color}`} />
+                      {loading ? (
+                        <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                      ) : (
+                        <IconComponent className={`h-5 w-5 ${tool.color}`} />
+                      )}
                       <div>
-                        <div className="text-xs font-medium">{tool.name}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {tool.description}
+                        <div className="text-xs font-medium">
+                          {loading ? "Loading..." : tool.name}
                         </div>
-                        <Badge variant="outline" className="text-xs mt-1">
-                          {tool.command}
-                        </Badge>
+                        <div className="text-xs text-muted-foreground">
+                          {loading ? "Please wait..." : tool.description}
+                        </div>
+                        {!loading && (
+                          <Badge variant="outline" className="text-xs mt-1">
+                            {tool.command}
+                          </Badge>
+                        )}
                       </div>
                     </Button>
                   );

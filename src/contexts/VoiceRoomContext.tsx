@@ -4,6 +4,7 @@ import { RealtimeVoiceChat } from '@/utils/RealtimeAudio';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { useEngagement } from '@/hooks/useEngagement';
+import { useEnhancedKarma } from '@/hooks/useEnhancedKarma';
 
 // Types and interfaces
 interface VoiceParticipant {
@@ -138,7 +139,8 @@ const useDebounce = (func: Function, wait: number) => {
 export const VoiceRoomProvider: React.FC<VoiceRoomProviderProps> = ({ children }) => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { trackActivity, trackKarmaActivity } = useEngagement();
+  const { trackActivity } = useEngagement();
+  const { trackKarmaActivity } = useEnhancedKarma();
 
   // State
   const [state, setState] = useState<VoiceRoomState>({
@@ -388,7 +390,7 @@ export const VoiceRoomProvider: React.FC<VoiceRoomProviderProps> = ({ children }
           }));
 
           // Track karma for voice participation with group ID
-          trackKarmaActivity(groupId, 'voice_participation', 3, 'Joined voice room', 1.0);
+          trackKarmaActivity('voice', 3, 'Joined voice room', 1.0, groupId);
 
           toast({
             title: "Voice Room Connected",

@@ -87,7 +87,16 @@ export const useDatabaseGames = (groupId: string) => {
 
   // Create This or That game
   const createThisOrThatGame = useCallback(async (question: string, optionA: string, optionB: string) => {
-    if (!user?.id || !groupId) return null;
+    if (!user?.id || !groupId) {
+      console.error('Missing user ID or group ID for game creation');
+      return null;
+    }
+
+    // Validate required fields
+    if (!question?.trim() || !optionA?.trim() || !optionB?.trim()) {
+      console.error('Invalid game data: missing required fields', { question, optionA, optionB });
+      return null;
+    }
 
     try {
       const { data, error } = await supabase
@@ -95,15 +104,18 @@ export const useDatabaseGames = (groupId: string) => {
         .insert({
           group_id: groupId,
           created_by: user.id,
-          question,
-          option_a: optionA,
-          option_b: optionB,
+          question: question.trim(),
+          option_a: optionA.trim(),
+          option_b: optionB.trim(),
           expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString() // 30 minutes
         })
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error creating This or That game:', error);
+        throw error;
+      }
       
       setThisOrThatGames(prev => [data, ...prev]);
       return data;
@@ -187,3 +199,4 @@ export const useDatabaseGames = (groupId: string) => {
     loadGames
   };
 };
+
