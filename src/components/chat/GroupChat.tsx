@@ -734,7 +734,7 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
         return (
           <CreateTruthLie
             onCreateGame={(statements) => {
-              createTruthLieGame(statements, user?.id || '', userProfile.username);
+              createTruthLieGame(statements, 1); // Default lie statement number
               setActiveView(null);
               toast({
                 title: "Game Started",

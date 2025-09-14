@@ -13,6 +13,11 @@ interface ActiveGameDisplayProps {
 }
 
 const gameTypeInfo = {
+  'twoTruths': {
+    title: 'Two Truths & a Lie',
+    icon: '🎭',
+    color: 'bg-orange-50 border-orange-200 dark:bg-orange-950/20 dark:border-orange-800'
+  },
   'thisorthat': {
     title: 'This or That',
     icon: '⚖️',
@@ -22,11 +27,6 @@ const gameTypeInfo = {
     title: 'Emoji Riddle',
     icon: '🧩',
     color: 'bg-yellow-50 border-yellow-200 dark:bg-yellow-950/20 dark:border-yellow-800'
-  },
-  'twoTruths': {
-    title: 'Two Truths & a Lie',
-    icon: '🎭',
-    color: 'bg-orange-50 border-orange-200 dark:bg-orange-950/20 dark:border-orange-800'
   }
 };
 
@@ -34,7 +34,7 @@ export const ActiveGameDisplay = ({ game, onExit, currentUserId, currentUsername
   const [timeLeft, setTimeLeft] = useState<string>('');
   const [isParticipating, setIsParticipating] = useState(true);
 
-  const gameInfo = gameTypeInfo[game.gameType] || gameTypeInfo.thisorthat;
+  const gameInfo = gameTypeInfo[game.gameType] || gameTypeInfo.twoTruths;
 
   useEffect(() => {
     const updateTimeLeft = () => {
