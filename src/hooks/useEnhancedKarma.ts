@@ -204,10 +204,10 @@ export const useEnhancedKarma = () => {
 
     try {
       // Only save to database if we have a valid group_id
-      if (groupId && groupId.trim() !== '') {
+      if (groupId && typeof groupId === 'string' && groupId.trim() !== '' && groupId !== 'null' && groupId !== 'undefined') {
         const { error } = await supabase.rpc('track_karma_activity', {
           p_user_id: user.id,
-          p_group_id: groupId,
+          p_group_id: groupId.trim(),
           p_activity_type: type,
           p_points: points,
           p_description: description,
@@ -218,7 +218,14 @@ export const useEnhancedKarma = () => {
           console.error('Error tracking karma activity:', error);
         }
       } else {
-        console.warn('Cannot track karma activity: no valid group_id provided', { groupId, type, points, description });
+        console.warn('Cannot track karma activity: no valid group_id provided', { 
+          groupId, 
+          type, 
+          points, 
+          description,
+          groupIdType: typeof groupId,
+          groupIdLength: groupId?.length
+        });
       }
     } catch (error) {
       console.error('Error tracking karma activity:', error);
@@ -272,7 +279,7 @@ export const useEnhancedKarma = () => {
     
     // Call original tracking function
     await trackActivity(activityType);
-  }, [user, engagement, trackKarmaActivity, trackActivity]);
+  }, [user, engagement, trackActivity]);
 
   // Fetch recent karma activities from database
   const fetchRecentActivities = useCallback(async () => {
