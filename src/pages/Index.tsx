@@ -28,22 +28,11 @@ const Index = () => {
   // Simple back button handler with error handling
   const handleBack = () => {
     try {
-      // Check current tab and navigate accordingly
-      if (activeTab === 'chat') {
-        setActiveTab('home');
-        navigate('/home');
-      } else if (activeTab === 'profile' || activeTab === 'settings') {
-        setActiveTab('home');
-        navigate('/home');
-      } else {
-        // Default fallback
-        setActiveTab('home');
-        navigate('/home');
-      }
+      // Always go to home from any page
+      navigate('/home');
     } catch (error) {
       console.error('Error in back navigation:', error);
       // Fallback to home
-      setActiveTab('home');
       navigate('/home');
     }
   };
@@ -62,10 +51,8 @@ const Index = () => {
   // Sync activeTab with URL changes (for browser back/forward)
   useEffect(() => {
     const newTab = getCurrentTab();
-    if (newTab !== activeTab) {
-      setActiveTab(newTab);
-    }
-  }, [location.pathname, activeTab]);
+    setActiveTab(newTab);
+  }, [location.pathname]);
 
   const handleCompleteOnboarding = async () => {
     try {
@@ -98,24 +85,20 @@ const Index = () => {
         // Silent error handling for production
       }
     }
-    setActiveTab('chat');
     navigate('/chat');
   };
 
   const handleBackToMatching = () => {
     // Don't clear currentGroup - keep it for easy return to chat
-    setActiveTab('home');
     navigate('/home');
   };
 
 
   const handleProfileNavigation = () => {
-    setActiveTab('profile');
     navigate('/profile');
   };
 
   const handleSettingsNavigation = () => {
-    setActiveTab('settings');
     navigate('/settings');
   };
 
@@ -240,7 +223,7 @@ const Index = () => {
     if (activeTab === 'profile') {
       return (
         <div className="animate-fade-in">
-          <ProfilePage onGoHome={() => setActiveTab('home')} />
+          <ProfilePage onGoHome={() => navigate('/home')} />
         </div>
       );
     }
@@ -249,7 +232,7 @@ const Index = () => {
     if (activeTab === 'settings') {
       return (
         <div className="animate-fade-in">
-          <SettingsView onGoHome={() => setActiveTab('home')} />
+          <SettingsView onGoHome={() => navigate('/home')} />
         </div>
       );
     }
@@ -266,7 +249,7 @@ const Index = () => {
                 You need to join a group before accessing the chat.
               </p>
               <button 
-                onClick={() => setActiveTab('home')}
+                onClick={() => navigate('/home')}
                 className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
               >
                 Go to Home
@@ -284,7 +267,7 @@ const Index = () => {
             groupVibe={currentGroup.vibe || 'Friendly'}
             memberCount={currentGroup.member_count || 0}
             onBack={handleBack}
-            onGoHome={() => setActiveTab('home')}
+            onGoHome={() => navigate('/home')}
           />
         </div>
       );
