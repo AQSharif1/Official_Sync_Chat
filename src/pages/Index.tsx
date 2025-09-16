@@ -294,7 +294,7 @@ const Index = () => {
   };
 
   return (
-    <div className={`h-screen max-h-screen bg-background overflow-hidden ${deviceType === 'mobile' ? 'mobile-optimized' : deviceType === 'desktop' ? 'laptop-optimized' : ''}`}>
+    <div className={`min-h-screen bg-background ${deviceType === 'mobile' ? 'mobile-optimized' : deviceType === 'desktop' ? 'laptop-optimized' : ''}`}>
       {/* Navigation */}
       <NavigationBar 
         isMobile={isMobile}
