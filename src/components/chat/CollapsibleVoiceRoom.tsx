@@ -214,28 +214,28 @@ export const CollapsibleVoiceRoom = ({ groupName }: CollapsibleVoiceRoomProps) =
 
           {/* Settings Panel */}
           {showSettings && (
-            <div className="p-3 bg-gray-50 rounded-lg space-y-3">
-              <h5 className="text-sm font-medium">Voice Settings</h5>
+            <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg space-y-3">
+              <h5 className="text-sm font-medium text-gray-900 dark:text-gray-100">Voice Settings</h5>
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs">Microphone Access</span>
+                  <span className="text-xs text-gray-700 dark:text-gray-300">Microphone Access</span>
                   <Badge variant={isMuted ? "destructive" : "default"} className="text-xs">
                     {isMuted ? "Muted" : "Active"}
                   </Badge>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs">Audio Output</span>
+                  <span className="text-xs text-gray-700 dark:text-gray-300">Audio Output</span>
                   <Badge variant={isDeafened ? "destructive" : "default"} className="text-xs">
                     {isDeafened ? "Deafened" : "Active"}
                   </Badge>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs">Hand Raised</span>
+                  <span className="text-xs text-gray-700 dark:text-gray-300">Hand Raised</span>
                   <Badge variant={handRaised ? "default" : "outline"} className="text-xs">
                     {handRaised ? "Yes" : "No"}
                   </Badge>
                 </div>
-                <div className="text-xs text-gray-500 text-center pt-2 border-t">
+                <div className="text-xs text-gray-500 dark:text-gray-400 text-center pt-2 border-t border-gray-200 dark:border-gray-600">
                   Use the controls above to adjust your voice settings
                 </div>
               </div>

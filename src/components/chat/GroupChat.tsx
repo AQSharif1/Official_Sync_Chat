@@ -45,7 +45,6 @@ import {
   useWouldYouRather
 } from '@/hooks/useOptimizedChatTools';
 import { useEnhancedKarma } from '@/hooks/useEnhancedKarma';
-import { OnlineStatusToggle } from '@/components/OnlineStatusToggle';
 
 import { useDailyPrompts } from '@/hooks/useDailyPrompts';
 import { useInputValidation } from '@/hooks/useInputValidation';
@@ -468,6 +467,20 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
     // End the game timer
     gameTimerManager.endGame();
     
+    // Mark the game as cleared for this user (hide it from their view)
+    if (activeGame && user?.id && groupId) {
+      try {
+        await supabase.from('user_cleared_messages').insert({
+          user_id: user.id,
+          group_id: groupId,
+          message_id: activeGame.gameId, // Use gameId as message_id for games
+          cleared_at: new Date().toISOString()
+        });
+      } catch (error) {
+        console.error('Error clearing game for user:', error);
+      }
+    }
+    
     // Clean up the active game from database if it exists
     if (activeGame) {
       await endGame(activeGame.gameType, activeGame.gameId);
@@ -875,9 +888,6 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
 
           {/* Right Section - Actions */}
           <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
-            {/* Online Status Toggle */}
-            <OnlineStatusToggle groupId={groupId} />
-            
             {/* Members Button - Always visible */}
             <GroupMembersList 
               groupId={groupId}

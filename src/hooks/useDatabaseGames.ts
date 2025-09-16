@@ -40,13 +40,24 @@ export const useDatabaseGames = (groupId: string) => {
 
   // Load all active games for the group
   const loadGames = useCallback(async () => {
-    if (!groupId) return;
+    if (!groupId || !user?.id) return;
 
     try {
       setLoading(true);
       
-      // Load This or That games with votes
-      const { data: totGames, error: totError } = await supabase
+      // First, get cleared games for this user
+      const { data: clearedGames, error: clearedError } = await supabase
+        .from('user_cleared_messages')
+        .select('message_id')
+        .eq('user_id', user.id)
+        .eq('group_id', groupId);
+
+      if (clearedError) throw clearedError;
+      
+      const clearedGameIds = clearedGames?.map(c => c.message_id) || [];
+      
+      // Load This or That games with votes (excluding cleared ones)
+      let totQuery = supabase
         .from('this_or_that_games')
         .select(`
           *,
@@ -56,13 +67,19 @@ export const useDatabaseGames = (groupId: string) => {
           )
         `)
         .eq('group_id', groupId)
-        .eq('is_active', true)
-        .order('created_at', { ascending: false });
+        .eq('is_active', true);
+      
+      // Only add the NOT IN filter if there are cleared games
+      if (clearedGameIds.length > 0) {
+        totQuery = totQuery.not('id', 'in', `(${clearedGameIds.join(',')})`);
+      }
+      
+      const { data: totGames, error: totError } = await totQuery.order('created_at', { ascending: false });
 
       if (totError) throw totError;
 
-      // Load Emoji Riddle games with guesses
-      const { data: emojiGames, error: emojiError } = await supabase
+      // Load Emoji Riddle games with guesses (excluding cleared ones)
+      let emojiQuery = supabase
         .from('emoji_riddle_games')
         .select(`
           *,
@@ -73,13 +90,19 @@ export const useDatabaseGames = (groupId: string) => {
           )
         `)
         .eq('group_id', groupId)
-        .eq('is_active', true)
-        .order('created_at', { ascending: false });
+        .eq('is_active', true);
+      
+      // Only add the NOT IN filter if there are cleared games
+      if (clearedGameIds.length > 0) {
+        emojiQuery = emojiQuery.not('id', 'in', `(${clearedGameIds.join(',')})`);
+      }
+      
+      const { data: emojiGames, error: emojiError } = await emojiQuery.order('created_at', { ascending: false });
 
       if (emojiError) throw emojiError;
 
-      // Load Truth Lie games with guesses
-      const { data: truthGames, error: truthError } = await supabase
+      // Load Truth Lie games with guesses (excluding cleared ones)
+      let truthQuery = supabase
         .from('truth_lie_games')
         .select(`
           *,
@@ -91,8 +114,14 @@ export const useDatabaseGames = (groupId: string) => {
           )
         `)
         .eq('group_id', groupId)
-        .eq('is_active', true)
-        .order('created_at', { ascending: false });
+        .eq('is_active', true);
+      
+      // Only add the NOT IN filter if there are cleared games
+      if (clearedGameIds.length > 0) {
+        truthQuery = truthQuery.not('id', 'in', `(${clearedGameIds.join(',')})`);
+      }
+      
+      const { data: truthGames, error: truthError } = await truthQuery.order('created_at', { ascending: false });
 
       if (truthError) throw truthError;
 
@@ -238,8 +267,7 @@ export const useDatabaseGames = (groupId: string) => {
         .insert({
           game_id: gameId,
           user_id: user.id,
-          guess: guess.trim(),
-          group_id: groupId
+          guess: guess.trim()
         });
 
       if (error) throw error;
