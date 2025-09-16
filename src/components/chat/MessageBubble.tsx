@@ -7,6 +7,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { ChatMessage } from '@/hooks/useChatMessages';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserMood } from '@/hooks/useUserMood';
+import { useOptimizedOnlineStatus } from '@/hooks/useOptimizedOnlineStatus';
 import { MessageModerationMenu } from './MessageModerationMenu';
 import { FlagIndicator } from './FlagIndicator';
 
@@ -21,6 +22,7 @@ interface MessageBubbleProps {
   onPin?: (messageId: string, content: string, username: string, messageType: 'text' | 'gif' | 'voice', gifUrl?: string, voiceAudioUrl?: string) => void;
   onHideMessage?: (messageId: string) => void;
   currentUserId?: string;
+  groupId?: string;
 }
 
 interface FlaggedMessage {
@@ -38,12 +40,14 @@ export const MessageBubble = ({
   onReact,
   onPin, 
   onHideMessage,
-  currentUserId 
+  currentUserId,
+  groupId
 }: MessageBubbleProps) => {
   // Use either onReaction or onReact prop
   const handleReaction = onReaction || onReact;
   const { user } = useAuth();
   const { getUserDisplayName } = useUserMood();
+  const { getUserOnlineStatus } = useOptimizedOnlineStatus(groupId || '');
   const [isPlaying, setIsPlaying] = useState(false);
   const [showReactions, setShowReactions] = useState(false);
   const [flaggedMessage, setFlaggedMessage] = useState<FlaggedMessage | null>(null);
@@ -51,6 +55,9 @@ export const MessageBubble = ({
   const [userKarma, setUserKarma] = useState<number>(0);
   const [isHidden, setIsHidden] = useState(false);
   const isOwnMessage = user?.id === message.userId;
+  
+  // Get online status for the message author
+  const userOnlineStatus = getUserOnlineStatus(message.userId);
 
   // Check if message is flagged and load user display name
   useEffect(() => {
@@ -265,9 +272,21 @@ export const MessageBubble = ({
       <div className={`max-w-[70%] ${isOwnMessage ? 'ml-auto' : 'mr-auto'} relative`}>
         {/* Username and timestamp */}
         <div className={`flex items-center gap-2 mb-1 ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
-          <span className="text-xs font-medium text-muted-foreground">
-            {displayName}
-          </span>
+          <div className="flex items-center gap-1">
+            <span className="text-xs font-medium text-muted-foreground">
+              {displayName}
+            </span>
+            {/* Online status indicator */}
+            {!isOwnMessage && userOnlineStatus && (
+              <div className="flex items-center gap-1">
+                {userOnlineStatus.isOnline ? (
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" title="Online" />
+                ) : (
+                  <div className="w-2 h-2 bg-gray-400 rounded-full" title={`Last seen ${userOnlineStatus.lastSeen.toLocaleTimeString()}`} />
+                )}
+              </div>
+            )}
+          </div>
           {userKarma > 0 && (
             <Badge variant="secondary" className="text-xs px-1 py-0 h-4">
               {userKarma} ⭐

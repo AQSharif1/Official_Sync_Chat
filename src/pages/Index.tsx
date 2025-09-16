@@ -294,14 +294,14 @@ const Index = () => {
   };
 
   return (
-    <div className={`min-h-screen bg-background ${deviceType === 'mobile' ? 'mobile-optimized' : deviceType === 'desktop' ? 'laptop-optimized' : ''}`}>
+    <div className={`h-screen max-h-screen bg-background overflow-hidden ${deviceType === 'mobile' ? 'mobile-optimized' : deviceType === 'desktop' ? 'laptop-optimized' : ''}`}>
       {/* Navigation */}
       <NavigationBar 
         isMobile={isMobile}
       />
       
-                     {/* Main Content */}
-               <div className="pt-14">
+      {/* Main Content */}
+      <div className="pt-14 h-full overflow-hidden">
         {renderMainContent()}
       </div>
     </div>

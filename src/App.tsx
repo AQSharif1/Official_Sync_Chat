@@ -10,6 +10,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 import { ScrollToTop } from "@/components/ScrollToTop";
+import { WindowFocusHandler } from "@/components/WindowFocusHandler";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import { SuccessPage } from "./pages/Success";
@@ -39,6 +40,7 @@ const App = () => (
               <Toaster />
               <Sonner />
               <PWAInstallPrompt />
+              <WindowFocusHandler />
               <BrowserRouter>
                 <ScrollToTop />
                 <ErrorBoundary>

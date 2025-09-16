@@ -28,6 +28,7 @@ import { useChatMessages, ChatMessage } from '@/hooks/useChatMessages';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { usePinnedMessages } from '@/hooks/usePinnedMessages';
 import { useAuth } from '@/hooks/useAuth';
+import { useOptimizedOnlineStatus } from '@/hooks/useOptimizedOnlineStatus';
 import { useEngagement } from '@/hooks/useEngagement';
 import { useClearedMessages } from '@/hooks/useClearedMessages';
 import { useDatabaseGames } from '@/hooks/useDatabaseGames';
@@ -35,18 +36,16 @@ import { useGamePreferences } from '@/hooks/useGamePreferences';
 import { usePremium } from '@/hooks/usePremium';
 
 import { useAppState } from '@/hooks/useAppState';
-import { useRealtimeChat } from '@/hooks/useRealtimeChat';
+import { useUnifiedRealtimeChat } from '@/hooks/useUnifiedRealtimeChat';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   usePolls, 
   usePlaylists, 
-  useWouldYouRather, 
-  useTruthLie, 
-  useThisOrThat, 
-  useEmojiRiddles 
+  useWouldYouRather
 } from '@/hooks/useOptimizedChatTools';
 import { useEnhancedKarma } from '@/hooks/useEnhancedKarma';
+import { OnlineStatusToggle } from '@/components/OnlineStatusToggle';
 
 import { useDailyPrompts } from '@/hooks/useDailyPrompts';
 import { useInputValidation } from '@/hooks/useInputValidation';
@@ -97,6 +96,8 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
   const { messages, loading: messagesLoading, addMessage, addReaction, refetch } = useChatMessages(groupId);
   const { typingUsers } = useTypingIndicator(groupId, user?.id || '');
   const { pinnedMessages, pinMessage, unpinMessage } = usePinnedMessages(groupId);
+  const { getOnlineCount, onlineUsers } = useOptimizedOnlineStatus(groupId);
+  const onlineCount = getOnlineCount();
   const appState = useAppState();
   const [userProfile, setUserProfile] = useState<{ username: string } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -115,8 +116,8 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
   const { clearedMessageIds, clearMessages, isMessageCleared } = useClearedMessages(groupId);
   const [groupKarmaTotal, setGroupKarmaTotal] = useState<number>(0);
 
-  // Enhanced real-time chat
-  const { isConnected } = useRealtimeChat({
+  // Unified real-time chat
+  const { isConnected } = useUnifiedRealtimeChat({
     groupId,
     onNewMessage: (message: ChatMessage) => {
       // Auto-scroll when new message arrives - FIXED: Proper timeout cleanup
@@ -130,6 +131,10 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
     },
     onReactionUpdate: () => {
       refetch();
+    },
+    onOnlineUsersUpdate: (users) => {
+      // Online users are handled by the optimized hook
+      console.log('Online users updated:', users.size);
     }
   });
 
@@ -154,7 +159,12 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
     truthLieGames, 
     createThisOrThatGame: createTOTPrompt,
     createEmojiRiddleGame: createRiddle,
-    createTruthLieGame: createTruthLieGame
+    createTruthLieGame: createTruthLieGame,
+    voteThisOrThat,
+    submitRiddleGuess,
+    submitTruthLieGuess,
+    endGame,
+    deleteGameData
   } = useDatabaseGames(groupId);
 
   // Use database game preferences instead of localStorage
@@ -363,12 +373,15 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
         crypto.randomUUID(),
         pendingGame.duration,
         {
-          onTimeEnd: () => {
-            // Auto-end game when time expires
+          onTimeEnd: async () => {
+            // Auto-end game when time expires - delete all data to prevent storage overload
+            if (activeGame) {
+              await deleteGameData(activeGame.gameType, activeGame.gameId);
+            }
             setActiveGame(null);
             toast({
               title: "Game Ended",
-              description: "Round completed - results posted!",
+              description: "Round completed - game data cleaned up!",
             });
           },
           onTick: (remaining) => {
@@ -386,7 +399,7 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
         if (newActiveGame) {
           setActiveGame(newActiveGame);
           
-          // Start the appropriate game
+          // Start the appropriate game with duration
           switch (pendingGame.gameType) {
             case 'thisorthat':
               const randomTOT = THIS_OR_THAT_PROMPTS[Math.floor(Math.random() * THIS_OR_THAT_PROMPTS.length)];
@@ -403,11 +416,11 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
                 return;
               }
               
-              createTOTPrompt(randomTOT.question, optionA, optionB);
+              createTOTPrompt(randomTOT.question, optionA, optionB, pendingGame.duration);
               break;
             case 'emojiriddle':
               const randomRiddle = EMOJI_RIDDLES[Math.floor(Math.random() * EMOJI_RIDDLES.length)];
-              createRiddle(randomRiddle.emojis, randomRiddle.answer, randomRiddle.hint, randomRiddle.funFact);
+              createRiddle(randomRiddle.emojis, randomRiddle.answer, randomRiddle.hint, randomRiddle.funFact, pendingGame.duration);
               break;
             case 'twoTruths':
               const randomStatements = [
@@ -416,7 +429,7 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
                 "I have never been on a roller coaster"
               ];
               const lieStatementNumber = Math.floor(Math.random() * 3) + 1;
-              createTruthLieGame(randomStatements, lieStatementNumber);
+              createTruthLieGame(randomStatements, lieStatementNumber, pendingGame.duration);
               break;
           }
 
@@ -451,8 +464,15 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
     setPendingGame(null);
   };
 
-  const handleExitGame = () => {
+  const handleExitGame = async () => {
+    // End the game timer
     gameTimerManager.endGame();
+    
+    // Clean up the active game from database if it exists
+    if (activeGame) {
+      await endGame(activeGame.gameType, activeGame.gameId);
+    }
+    
     setActiveGame(null);
     toast({
       title: "Left Game",
@@ -460,13 +480,18 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
     });
   };
 
-  const handleEndGame = () => {
+  const handleEndGame = async () => {
+    // End the game timer
     gameTimerManager.endGame();
+    
+    // Clean up the active game from database if it exists
+    if (activeGame) {
+      await endGame(activeGame.gameType, activeGame.gameId);
+    }
+    
     setActiveGame(null);
     
-    // Clear any active games
-    clearTOTPrompts();
-    clearRiddles();
+    // Game data is now managed by database - no need to clear local state
   };
 
   const handleToolSelect = (tool: string) => {
@@ -573,22 +598,27 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
   const handleSendGif = async (gifUrl: string) => {
     if (!user || !userProfile) return false;
 
-    // Check rate limit
-    if (!(await checkRateLimit())) {
-      return false;
-    }
-
+    // Skip rate limiting for GIFs to improve performance
+    // GIFs are less likely to be spam compared to text messages
+    
     setIsLoading(true);
     try {
+      // Optimized GIF processing - immediate UI feedback
       const success = await addMessage({
         messageType: 'gif',
         gifUrl
       });
 
       if (success) {
-        // Track engagement
-        trackActivity('message');
-        trackUserAction('send_gif');
+        // Background karma tracking (non-blocking)
+        Promise.resolve().then(async () => {
+          try {
+            trackActivity('message');
+            trackUserAction('send_gif');
+          } catch (error) {
+            console.warn('Background karma tracking failed for GIF:', error);
+          }
+        });
         
         return true;
       } else {
@@ -661,9 +691,16 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
     const success = await clearMessages(messageIds);
     
     if (success) {
+      // Also clean up any active games when clearing chat - delete all data
+      if (activeGame) {
+        await deleteGameData(activeGame.gameType, activeGame.gameId);
+        gameTimerManager.endGame();
+        setActiveGame(null);
+      }
+      
       toast({
         title: "Chat cleared",
-        description: "All messages have been permanently removed from your view",
+        description: "All messages and game data have been permanently deleted",
       });
     } else {
       toast({
@@ -786,11 +823,11 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
           onClose={() => setShowInvitePanel(false)} 
         />
       )}
-      <div className="flex flex-col h-[calc(100vh-4rem)] max-w-6xl mx-auto bg-background rounded-lg shadow-lg overflow-hidden">
+      <div className="flex flex-col h-screen max-h-screen max-w-6xl mx-auto bg-background rounded-lg shadow-lg overflow-hidden">
         {/* Modern Chat Header */}
-        <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-background to-muted/30 backdrop-blur-sm sticky top-0 z-10">
+        <div className="flex items-center justify-between p-3 sm:p-4 border-b bg-gradient-to-r from-background to-muted/30 backdrop-blur-sm sticky top-0 z-10 min-h-[60px]">
           {/* Mobile Navigation - Left Section */}
-          <div className="flex items-center gap-2 md:hidden">
+          <div className="flex items-center gap-2 md:hidden flex-shrink-0">
             <Button
               variant="ghost"
               size="sm"
@@ -802,25 +839,33 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
           </div>
 
           {/* Left Section - Room Info */}
-          <div className="flex items-center gap-3 min-w-0 flex-1">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 flex items-center justify-center flex-shrink-0">
-                <Users className="w-4 h-4 text-white" />
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 overflow-hidden">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+              <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 flex items-center justify-center flex-shrink-0">
+                <Users className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
               </div>
-              <div className="min-w-0 flex-1">
-                <h2 className="font-semibold text-lg truncate text-foreground">{groupName}</h2>
-                <div className="flex items-center gap-2 mt-1">
-                  <Badge variant="secondary" className="text-xs px-2 py-0.5">
+              <div className="min-w-0 flex-1 overflow-hidden">
+                <h2 className="font-semibold text-base sm:text-lg truncate text-foreground">{groupName}</h2>
+                <div className="flex items-center gap-1 sm:gap-2 mt-1 flex-wrap">
+                  <Badge variant="secondary" className="text-xs px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs">
                     {groupVibe}
                   </Badge>
                   {groupKarmaTotal > 0 && (
-                    <Badge variant="outline" className="text-xs px-2 py-0.5">
+                    <Badge variant="outline" className="text-xs px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs">
                       {groupKarmaTotal} ⭐
                     </Badge>
                   )}
+                  {onlineCount > 0 && (
+                    <Badge variant="secondary" className="text-xs px-1.5 sm:px-2 py-0.5 flex items-center gap-1 text-[10px] sm:text-xs">
+                      <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-500 rounded-full animate-pulse" />
+                      <span className="hidden sm:inline">{onlineCount} online</span>
+                      <span className="sm:hidden">{onlineCount}</span>
+                    </Badge>
+                  )}
                   {!isConnected && (
-                    <Badge variant="destructive" className="text-xs px-2 py-0.5 animate-pulse">
-                      Reconnecting...
+                    <Badge variant="destructive" className="text-xs px-1.5 sm:px-2 py-0.5 animate-pulse text-[10px] sm:text-xs">
+                      <span className="hidden sm:inline">Reconnecting...</span>
+                      <span className="sm:hidden">...</span>
                     </Badge>
                   )}
                 </div>
@@ -829,47 +874,17 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
           </div>
 
           {/* Right Section - Actions */}
-          <div className="flex items-center gap-2 flex-shrink-0">
-            {/* Refresh Button */}
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={handleRefresh} 
-              className="h-9 w-9 p-0 rounded-full hover:bg-muted/50"
-              title="Refresh Chat"
-            >
-              <RefreshCw className="w-4 h-4" />
-            </Button>
-
-            {/* Home Button */}
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={onGoHome} 
-              className="h-9 w-9 p-0 rounded-full hover:bg-muted/50"
-              title="Go to Home"
-            >
-              <Home className="w-4 h-4" />
-            </Button>
-
-            {/* Members Button */}
+          <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+            {/* Online Status Toggle */}
+            <OnlineStatusToggle groupId={groupId} />
+            
+            {/* Members Button - Always visible */}
             <GroupMembersList 
               groupId={groupId}
               memberCount={actualMemberCount}
             />
 
-            {/* DM Button */}
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={handleDMClick} 
-              className="h-9 w-9 p-0 rounded-full hover:bg-muted/50"
-              title="Direct Messages"
-            >
-              <MessageCircle className="w-4 h-4" />
-            </Button>
-
-            {/* More Options Menu */}
+            {/* More Options Menu - Mobile: All actions, Desktop: Secondary actions */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button 
@@ -882,6 +897,23 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
+                {/* Mobile-only actions */}
+                <div className="md:hidden">
+                  <DropdownMenuItem onClick={handleRefresh}>
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Refresh Chat
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={onGoHome}>
+                    <Home className="w-4 h-4 mr-2" />
+                    Go to Home
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleDMClick}>
+                    <MessageCircle className="w-4 h-4 mr-2" />
+                    Direct Messages
+                  </DropdownMenuItem>
+                </div>
+                
+                {/* Common actions */}
                 <DropdownMenuItem onClick={handleClearChat}>
                   <Eraser className="w-4 h-4 mr-2" />
                   Clear Chat
@@ -897,15 +929,51 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* Leave Button */}
+            {/* Desktop-only buttons */}
+            <div className="hidden md:flex items-center gap-2">
+              {/* Refresh Button */}
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={handleRefresh} 
+                className="h-9 w-9 p-0 rounded-full hover:bg-muted/50"
+                title="Refresh Chat"
+              >
+                <RefreshCw className="w-4 h-4" />
+              </Button>
+
+              {/* Home Button */}
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={onGoHome} 
+                className="h-9 w-9 p-0 rounded-full hover:bg-muted/50"
+                title="Go to Home"
+              >
+                <Home className="w-4 h-4" />
+              </Button>
+
+              {/* DM Button */}
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={handleDMClick} 
+                className="h-9 w-9 p-0 rounded-full hover:bg-muted/50"
+                title="Direct Messages"
+              >
+                <MessageCircle className="w-4 h-4" />
+              </Button>
+            </div>
+
+            {/* Leave Button - Always visible but smaller on mobile */}
             <Button 
               variant="outline" 
               size="sm" 
               onClick={() => setShowSwitchDialog(true)} 
-              className="h-9 px-3 text-sm font-medium border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
+              className="h-9 px-2 sm:px-3 text-xs sm:text-sm font-medium border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
             >
-              <ArrowLeft className="w-4 h-4 mr-1" />
-              Leave
+              <ArrowLeft className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+              <span className="hidden sm:inline">Leave</span>
             </Button>
           </div>
         </div>
@@ -916,7 +984,7 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
           onUnpin={unpinMessage}
         />
         {/* Messages */}
-        <ScrollArea ref={scrollAreaRef} className="flex-1 p-4">
+        <ScrollArea ref={scrollAreaRef} className="flex-1 p-3 sm:p-4 min-h-0">
           <div className="space-y-4">
             
             {/* Loading state */}
@@ -946,6 +1014,7 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
                     onPin={pinMessage}
                     onHideMessage={handleHideMessage}
                     currentUserId={user?.id}
+                    groupId={groupId}
                   />
                 ))
             )}
@@ -964,83 +1033,165 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
             {(totPrompts.length > 0 || riddles.length > 0 || truthLieGames.length > 0) && (
               <div className="space-y-4 mt-6 pt-4 border-t">
                 {/* Two Truths and a Lie Games */}
-                {truthLieGames.map(game => (
-                  <TruthLieGame
-                    key={game.id}
-                    game={{
-                      id: game.id,
-                      createdBy: game.created_by,
-                      createdByUsername: 'Anonymous', // TODO: Get username from profiles
-                      statements: [
-                        { id: '1', text: game.statement_1, isLie: game.lie_statement_number === 1 },
-                        { id: '2', text: game.statement_2, isLie: game.lie_statement_number === 2 },
-                        { id: '3', text: game.statement_3, isLie: game.lie_statement_number === 3 }
-                      ],
-                      guesses: [], // TODO: Load guesses from database
-                      isActive: game.is_active,
-                      expiresAt: new Date(game.expires_at || Date.now() + 30 * 60 * 1000)
-                    }}
-                    currentUserId={user?.id || ''}
-                    currentUsername={userProfile?.username || 'Anonymous'}
-                    onGuess={(gameId, statementId) => {
-                      if (user?.id) {
-                        // TODO: Implement database guess submission
-                        trackActivity('game_participation');
-                      }
-                    }}
-                  />
-                ))}
+                {truthLieGames.map(game => {
+                  // Process guesses data
+                  const guesses = game.truth_lie_guesses || [];
+                  const processedGuesses = guesses.map(guess => ({
+                    userId: guess.user_id,
+                    username: 'Anonymous', // TODO: Get username from profiles
+                    guessedLieNumber: guess.guessed_lie_number,
+                    isCorrect: guess.is_correct,
+                    timestamp: new Date(guess.created_at)
+                  }));
+                  
+                  return (
+                    <TruthLieGame
+                      key={game.id}
+                      game={{
+                        id: game.id,
+                        createdBy: game.created_by,
+                        createdByUsername: 'Anonymous', // TODO: Get username from profiles
+                        statements: [
+                          { id: '1', text: game.statement_1, isLie: game.lie_statement_number === 1 },
+                          { id: '2', text: game.statement_2, isLie: game.lie_statement_number === 2 },
+                          { id: '3', text: game.statement_3, isLie: game.lie_statement_number === 3 }
+                        ],
+                        guesses: processedGuesses,
+                        isActive: game.is_active,
+                        expiresAt: new Date(game.expires_at)
+                      }}
+                      currentUserId={user?.id || ''}
+                      currentUsername={userProfile?.username || 'Anonymous'}
+                      onGuess={async (gameId, statementId) => {
+                        if (user?.id) {
+                          const guessedLieNumber = parseInt(statementId);
+                          const success = await submitTruthLieGuess(gameId, guessedLieNumber);
+                          if (success) {
+                            trackActivity('game_participation');
+                            toast({
+                              title: "Guess submitted!",
+                              description: "Your guess has been recorded.",
+                            });
+                          } else {
+                            toast({
+                              title: "Guess failed",
+                              description: "Could not submit your guess. Please try again.",
+                              variant: "destructive",
+                            });
+                          }
+                        }
+                      }}
+                    />
+                  );
+                })}
 
                 {/* This or That Prompts */}
-                {totPrompts.map(prompt => (
-                  <ThisOrThat
-                    key={prompt.id}
-                    prompt={{
-                      id: prompt.id,
-                      question: prompt.question,
-                      options: [
-                        { id: 'A', text: prompt.option_a, emoji: '🍕', votes: 0, voters: [] },
-                        { id: 'B', text: prompt.option_b, emoji: '🍔', votes: 0, voters: [] }
-                      ],
-                      createdAt: new Date(prompt.created_at),
-                      expiresAt: new Date(prompt.expires_at || Date.now() + 30 * 60 * 1000),
-                      isActive: prompt.is_active
-                    }}
-                    currentUserId={user?.id || ''}
-                    onVote={(promptId, optionId) => {
-                      if (user?.id) {
-                        // TODO: Implement database vote submission
-                        trackActivity('tool');
-                      }
-                    }}
-                  />
-                ))}
+                {totPrompts.map(prompt => {
+                  // Process votes data
+                  const votes = prompt.this_or_that_votes || [];
+                  const optionAVotes = votes.filter(v => v.choice === 'A');
+                  const optionBVotes = votes.filter(v => v.choice === 'B');
+                  
+                  return (
+                    <ThisOrThat
+                      key={prompt.id}
+                      prompt={{
+                        id: prompt.id,
+                        question: prompt.question,
+                        options: [
+                          { 
+                            id: 'A', 
+                            text: prompt.option_a, 
+                            emoji: '🍕', 
+                            votes: optionAVotes.length, 
+                            voters: optionAVotes.map(v => v.user_id) 
+                          },
+                          { 
+                            id: 'B', 
+                            text: prompt.option_b, 
+                            emoji: '🍔', 
+                            votes: optionBVotes.length, 
+                            voters: optionBVotes.map(v => v.user_id) 
+                          }
+                        ],
+                        createdAt: new Date(prompt.created_at),
+                        expiresAt: new Date(prompt.expires_at),
+                        isActive: prompt.is_active
+                      }}
+                      currentUserId={user?.id || ''}
+                      onVote={async (promptId, optionId) => {
+                        if (user?.id) {
+                          const success = await voteThisOrThat(promptId, optionId);
+                          if (success) {
+                            trackActivity('tool');
+                            toast({
+                              title: "Vote submitted!",
+                              description: "Your choice has been recorded.",
+                            });
+                          } else {
+                            toast({
+                              title: "Vote failed",
+                              description: "Could not submit your vote. Please try again.",
+                              variant: "destructive",
+                            });
+                          }
+                        }
+                      }}
+                    />
+                  );
+                })}
                 
                 {/* Emoji Riddles */}
-                {riddles.map(riddle => (
-                  <EmojiRiddleGame
-                    key={riddle.id}
-                    riddle={{
-                      id: riddle.id,
-                      emojis: riddle.emojis,
-                      answer: riddle.answer,
-                      hint: riddle.hint || '',
-                      funFact: riddle.fun_fact || '',
-                      guesses: [], // TODO: Load guesses from database
-                      createdAt: new Date(riddle.created_at),
-                      expiresAt: new Date(riddle.expires_at || Date.now() + 30 * 60 * 1000),
-                      isActive: riddle.is_active
-                    }}
-                    currentUserId={user?.id || ''}
-                    currentUsername={userProfile?.username || 'Anonymous'}
-                    onGuess={(riddleId, guess) => {
-                      if (user?.id && userProfile?.username) {
-                        // TODO: Implement database guess submission
-                        trackActivity('tool');
-                      }
-                    }}
-                  />
-                ))}
+                {riddles.map(riddle => {
+                  // Process guesses data
+                  const guesses = riddle.emoji_riddle_guesses || [];
+                  const processedGuesses = guesses.map(guess => ({
+                    userId: guess.user_id,
+                    username: 'Anonymous', // TODO: Get username from profiles
+                    guess: guess.guess,
+                    timestamp: new Date(guess.created_at),
+                    isCorrect: guess.guess.toLowerCase().trim() === riddle.answer.toLowerCase().trim()
+                  }));
+                  
+                  return (
+                    <EmojiRiddleGame
+                      key={riddle.id}
+                      riddle={{
+                        id: riddle.id,
+                        emojis: riddle.emojis,
+                        answer: riddle.answer,
+                        hint: riddle.hint || '',
+                        funFact: riddle.fun_fact || '',
+                        guesses: processedGuesses,
+                        solvedBy: processedGuesses.find(g => g.isCorrect)?.username,
+                        solvedAt: processedGuesses.find(g => g.isCorrect)?.timestamp,
+                        createdAt: new Date(riddle.created_at),
+                        expiresAt: new Date(riddle.expires_at),
+                        isActive: riddle.is_active
+                      }}
+                      currentUserId={user?.id || ''}
+                      currentUsername={userProfile?.username || 'Anonymous'}
+                      onGuess={async (riddleId, guess) => {
+                        if (user?.id && userProfile?.username) {
+                          const success = await submitRiddleGuess(riddleId, guess);
+                          if (success) {
+                            trackActivity('tool');
+                            toast({
+                              title: "Guess submitted!",
+                              description: "Your guess has been recorded.",
+                            });
+                          } else {
+                            toast({
+                              title: "Guess failed",
+                              description: "Could not submit your guess. Please try again.",
+                              variant: "destructive",
+                            });
+                          }
+                        }
+                      }}
+                    />
+                  );
+                })}
               </div>
             )}
           </div>

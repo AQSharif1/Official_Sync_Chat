@@ -9,15 +9,11 @@ import {
   Headphones, 
   VolumeX, 
   Users, 
-  MessageSquare, 
-  X,
   ChevronDown,
   ChevronUp,
   Volume2,
   Hand,
-  Share2,
   Settings,
-  Phone,
   PhoneOff
 } from 'lucide-react';
 import { useVoiceRoom } from '@/contexts/VoiceRoomContext';
@@ -36,8 +32,6 @@ export const CollapsibleVoiceRoom = ({ groupName }: CollapsibleVoiceRoomProps) =
     isDeafened,
     isSpeaking,
     handRaised,
-    messages,
-    currentTranscript,
     isCollapsed,
     leaveVoiceRoom,
     toggleMute,
@@ -216,63 +210,33 @@ export const CollapsibleVoiceRoom = ({ groupName }: CollapsibleVoiceRoomProps) =
             </div>
           </div>
 
-          {/* Messages */}
-          <div className="space-y-2">
-            <h4 className="text-sm font-medium flex items-center gap-2">
-              <MessageSquare className="h-4 w-4" />
-              Voice Messages
-            </h4>
-            <div className="max-h-24 overflow-y-auto space-y-1">
-              {messages.length > 0 ? (
-                messages.slice(-5).map((message) => (
-                  <div key={message.id} className="text-xs p-2 bg-gray-50 rounded">
-                    <div className="font-medium text-gray-700">
-                      {message.type === 'user_speech' ? 'You' : 'AI'}
-                    </div>
-                    <div className="text-gray-600 truncate">{message.content}</div>
-                  </div>
-                ))
-              ) : (
-                <p className="text-xs text-gray-500 text-center py-2">
-                  No messages yet
-                </p>
-              )}
-            </div>
-          </div>
 
-          {/* Current Transcript */}
-          {currentTranscript && (
-            <div className="space-y-2">
-              <h4 className="text-sm font-medium">Live Transcript</h4>
-              <div className="p-2 bg-blue-50 rounded text-sm text-blue-800">
-                {currentTranscript}
-                {isSpeaking && (
-                  <span className="inline-block w-2 h-2 bg-blue-500 rounded-full ml-2 animate-pulse" />
-                )}
-              </div>
-            </div>
-          )}
 
           {/* Settings Panel */}
           {showSettings && (
-            <div className="p-3 bg-gray-50 rounded-lg space-y-2">
+            <div className="p-3 bg-gray-50 rounded-lg space-y-3">
               <h5 className="text-sm font-medium">Voice Settings</h5>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs">Input Volume</span>
-                  <div className="w-20 h-1 bg-gray-200 rounded-full">
-                    <div className="w-3/4 h-full bg-blue-500 rounded-full" />
-                  </div>
+                  <span className="text-xs">Microphone Access</span>
+                  <Badge variant={isMuted ? "destructive" : "default"} className="text-xs">
+                    {isMuted ? "Muted" : "Active"}
+                  </Badge>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs">Output Volume</span>
-                  <div className="w-20 h-1 bg-gray-200 rounded-full">
-                    <div className="w-4/5 h-full bg-green-500 rounded-full" />
-                  </div>
+                  <span className="text-xs">Audio Output</span>
+                  <Badge variant={isDeafened ? "destructive" : "default"} className="text-xs">
+                    {isDeafened ? "Deafened" : "Active"}
+                  </Badge>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs">Echo Cancellation</span>
-                  <div className="w-4 h-4 bg-green-500 rounded" />
+                  <span className="text-xs">Hand Raised</span>
+                  <Badge variant={handRaised ? "default" : "outline"} className="text-xs">
+                    {handRaised ? "Yes" : "No"}
+                  </Badge>
+                </div>
+                <div className="text-xs text-gray-500 text-center pt-2 border-t">
+                  Use the controls above to adjust your voice settings
                 </div>
               </div>
             </div>

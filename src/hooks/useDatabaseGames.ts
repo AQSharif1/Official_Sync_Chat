@@ -45,30 +45,51 @@ export const useDatabaseGames = (groupId: string) => {
     try {
       setLoading(true);
       
-      // Load This or That games
+      // Load This or That games with votes
       const { data: totGames, error: totError } = await supabase
         .from('this_or_that_games')
-        .select('*')
+        .select(`
+          *,
+          this_or_that_votes (
+            user_id,
+            choice
+          )
+        `)
         .eq('group_id', groupId)
         .eq('is_active', true)
         .order('created_at', { ascending: false });
 
       if (totError) throw totError;
 
-      // Load Emoji Riddle games
+      // Load Emoji Riddle games with guesses
       const { data: emojiGames, error: emojiError } = await supabase
         .from('emoji_riddle_games')
-        .select('*')
+        .select(`
+          *,
+          emoji_riddle_guesses (
+            user_id,
+            guess,
+            created_at
+          )
+        `)
         .eq('group_id', groupId)
         .eq('is_active', true)
         .order('created_at', { ascending: false });
 
       if (emojiError) throw emojiError;
 
-      // Load Truth Lie games
+      // Load Truth Lie games with guesses
       const { data: truthGames, error: truthError } = await supabase
         .from('truth_lie_games')
-        .select('*')
+        .select(`
+          *,
+          truth_lie_guesses (
+            user_id,
+            guessed_lie_number,
+            is_correct,
+            created_at
+          )
+        `)
         .eq('group_id', groupId)
         .eq('is_active', true)
         .order('created_at', { ascending: false });
@@ -86,7 +107,7 @@ export const useDatabaseGames = (groupId: string) => {
   }, [groupId]);
 
   // Create This or That game
-  const createThisOrThatGame = useCallback(async (question: string, optionA: string, optionB: string) => {
+  const createThisOrThatGame = useCallback(async (question: string, optionA: string, optionB: string, durationMinutes: number = 5) => {
     if (!user?.id || !groupId) {
       console.error('Missing user ID or group ID for game creation');
       return null;
@@ -107,7 +128,7 @@ export const useDatabaseGames = (groupId: string) => {
           question: question.trim(),
           option_a: optionA.trim(),
           option_b: optionB.trim(),
-          expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString() // 30 minutes
+          expires_at: new Date(Date.now() + durationMinutes * 60 * 1000).toISOString()
         })
         .select()
         .single();
@@ -126,7 +147,7 @@ export const useDatabaseGames = (groupId: string) => {
   }, [user?.id, groupId]);
 
   // Create Emoji Riddle game
-  const createEmojiRiddleGame = useCallback(async (emojis: string, answer: string, hint?: string, funFact?: string) => {
+  const createEmojiRiddleGame = useCallback(async (emojis: string, answer: string, hint?: string, funFact?: string, durationMinutes: number = 5) => {
     if (!user?.id || !groupId) return null;
 
     try {
@@ -139,7 +160,7 @@ export const useDatabaseGames = (groupId: string) => {
           answer,
           hint,
           fun_fact: funFact,
-          expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString() // 30 minutes
+          expires_at: new Date(Date.now() + durationMinutes * 60 * 1000).toISOString()
         })
         .select()
         .single();
@@ -155,7 +176,7 @@ export const useDatabaseGames = (groupId: string) => {
   }, [user?.id, groupId]);
 
   // Create Truth Lie game
-  const createTruthLieGame = useCallback(async (statements: string[], lieStatementNumber: number) => {
+  const createTruthLieGame = useCallback(async (statements: string[], lieStatementNumber: number, durationMinutes: number = 5) => {
     if (!user?.id || !groupId || statements.length !== 3) return null;
 
     try {
@@ -168,7 +189,7 @@ export const useDatabaseGames = (groupId: string) => {
           statement_2: statements[1],
           statement_3: statements[2],
           lie_statement_number: lieStatementNumber,
-          expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString() // 30 minutes
+          expires_at: new Date(Date.now() + durationMinutes * 60 * 1000).toISOString()
         })
         .select()
         .single();
@@ -183,10 +204,284 @@ export const useDatabaseGames = (groupId: string) => {
     }
   }, [user?.id, groupId]);
 
+  // Vote on This or That game
+  const voteThisOrThat = useCallback(async (gameId: string, optionId: string) => {
+    if (!user?.id || !groupId) return false;
+
+    try {
+      const { error } = await supabase
+        .from('this_or_that_votes')
+        .insert({
+          game_id: gameId,
+          user_id: user.id,
+          choice: optionId
+        });
+
+      if (error) throw error;
+
+      // Reload games to get updated vote counts
+      await loadGames();
+      return true;
+    } catch (error) {
+      console.error('Error voting on This or That:', error);
+      return false;
+    }
+  }, [user?.id, groupId, loadGames]);
+
+  // Submit guess for Emoji Riddle game
+  const submitRiddleGuess = useCallback(async (gameId: string, guess: string) => {
+    if (!user?.id || !groupId) return false;
+
+    try {
+      const { error } = await supabase
+        .from('emoji_riddle_guesses')
+        .insert({
+          game_id: gameId,
+          user_id: user.id,
+          guess: guess.trim(),
+          group_id: groupId
+        });
+
+      if (error) throw error;
+
+      // Reload games to get updated guesses
+      await loadGames();
+      return true;
+    } catch (error) {
+      console.error('Error submitting riddle guess:', error);
+      return false;
+    }
+  }, [user?.id, groupId, loadGames]);
+
+  // Submit guess for Truth Lie game
+  const submitTruthLieGuess = useCallback(async (gameId: string, guessedLieNumber: number) => {
+    if (!user?.id || !groupId) return false;
+
+    try {
+      // First get the correct lie number for this game
+      const { data: game, error: gameError } = await supabase
+        .from('truth_lie_games')
+        .select('lie_statement_number')
+        .eq('id', gameId)
+        .single();
+
+      if (gameError) throw gameError;
+
+      const isCorrect = guessedLieNumber === game.lie_statement_number;
+
+      const { error } = await supabase
+        .from('truth_lie_guesses')
+        .insert({
+          game_id: gameId,
+          user_id: user.id,
+          guessed_lie_number: guessedLieNumber,
+          is_correct: isCorrect
+        });
+
+      if (error) throw error;
+
+      // Reload games to get updated guesses
+      await loadGames();
+      return true;
+    } catch (error) {
+      console.error('Error submitting truth lie guess:', error);
+      return false;
+    }
+  }, [user?.id, groupId, loadGames]);
+
+  // End/cleanup a game by setting is_active to false
+  const endGame = useCallback(async (gameType: 'thisorthat' | 'emojiriddle' | 'twoTruths', gameId: string) => {
+    if (!groupId) return false;
+
+    try {
+      let tableName = '';
+      switch (gameType) {
+        case 'thisorthat':
+          tableName = 'this_or_that_games';
+          break;
+        case 'emojiriddle':
+          tableName = 'emoji_riddle_games';
+          break;
+        case 'twoTruths':
+          tableName = 'truth_lie_games';
+          break;
+        default:
+          return false;
+      }
+
+      const { error } = await supabase
+        .from(tableName)
+        .update({ is_active: false })
+        .eq('id', gameId)
+        .eq('group_id', groupId);
+
+      if (error) throw error;
+
+      // Update local state
+      switch (gameType) {
+        case 'thisorthat':
+          setThisOrThatGames(prev => prev.filter(game => game.id !== gameId));
+          break;
+        case 'emojiriddle':
+          setEmojiRiddleGames(prev => prev.filter(game => game.id !== gameId));
+          break;
+        case 'twoTruths':
+          setTruthLieGames(prev => prev.filter(game => game.id !== gameId));
+          break;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error ending game:', error);
+      return false;
+    }
+  }, [groupId]);
+
+  // Permanently delete game data (for cleanup after game ends)
+  const deleteGameData = useCallback(async (gameType: 'thisorthat' | 'emojiriddle' | 'twoTruths', gameId: string) => {
+    if (!groupId) return false;
+
+    try {
+      // Delete related data first (votes, guesses)
+      switch (gameType) {
+        case 'thisorthat':
+          // Delete votes first
+          await supabase
+            .from('this_or_that_votes')
+            .delete()
+            .eq('game_id', gameId);
+          
+          // Then delete the game
+          await supabase
+            .from('this_or_that_games')
+            .delete()
+            .eq('id', gameId)
+            .eq('group_id', groupId);
+          break;
+          
+        case 'emojiriddle':
+          // Delete guesses first
+          await supabase
+            .from('emoji_riddle_guesses')
+            .delete()
+            .eq('game_id', gameId);
+          
+          // Then delete the game
+          await supabase
+            .from('emoji_riddle_games')
+            .delete()
+            .eq('id', gameId)
+            .eq('group_id', groupId);
+          break;
+          
+        case 'twoTruths':
+          // Delete guesses first
+          await supabase
+            .from('truth_lie_guesses')
+            .delete()
+            .eq('game_id', gameId);
+          
+          // Then delete the game
+          await supabase
+            .from('truth_lie_games')
+            .delete()
+            .eq('id', gameId)
+            .eq('group_id', groupId);
+          break;
+      }
+
+      // Update local state
+      switch (gameType) {
+        case 'thisorthat':
+          setThisOrThatGames(prev => prev.filter(game => game.id !== gameId));
+          break;
+        case 'emojiriddle':
+          setEmojiRiddleGames(prev => prev.filter(game => game.id !== gameId));
+          break;
+        case 'twoTruths':
+          setTruthLieGames(prev => prev.filter(game => game.id !== gameId));
+          break;
+      }
+
+      console.log(`Game data deleted: ${gameType} (${gameId})`);
+      return true;
+    } catch (error) {
+      console.error('Error deleting game data:', error);
+      return false;
+    }
+  }, [groupId]);
+
+  // Clean up expired games (called periodically)
+  const cleanupExpiredGames = useCallback(async () => {
+    if (!groupId) return;
+
+    try {
+      const now = new Date().toISOString();
+      
+      // Get all expired games
+      const { data: expiredGames, error } = await supabase
+        .from('this_or_that_games')
+        .select('id')
+        .eq('group_id', groupId)
+        .eq('is_active', true)
+        .lt('expires_at', now);
+
+      if (error) throw error;
+
+      // Delete each expired game
+      for (const game of expiredGames || []) {
+        await deleteGameData('thisorthat', game.id);
+      }
+
+      // Do the same for emoji riddle games
+      const { data: expiredRiddles, error: riddleError } = await supabase
+        .from('emoji_riddle_games')
+        .select('id')
+        .eq('group_id', groupId)
+        .eq('is_active', true)
+        .lt('expires_at', now);
+
+      if (riddleError) throw riddleError;
+
+      for (const game of expiredRiddles || []) {
+        await deleteGameData('emojiriddle', game.id);
+      }
+
+      // Do the same for truth lie games
+      const { data: expiredTruth, error: truthError } = await supabase
+        .from('truth_lie_games')
+        .select('id')
+        .eq('group_id', groupId)
+        .eq('is_active', true)
+        .lt('expires_at', now);
+
+      if (truthError) throw truthError;
+
+      for (const game of expiredTruth || []) {
+        await deleteGameData('twoTruths', game.id);
+      }
+
+      console.log('Expired games cleaned up');
+    } catch (error) {
+      console.error('Error cleaning up expired games:', error);
+    }
+  }, [groupId, deleteGameData]);
+
   // Load games on mount and when group changes
   useEffect(() => {
     loadGames();
   }, [loadGames]);
+
+  // Set up automatic cleanup of expired games
+  useEffect(() => {
+    // Clean up expired games on mount
+    cleanupExpiredGames();
+    
+    // Set up periodic cleanup every 5 minutes
+    const cleanupInterval = setInterval(cleanupExpiredGames, 5 * 60 * 1000);
+    
+    return () => clearInterval(cleanupInterval);
+  }, [cleanupExpiredGames]);
 
   return {
     thisOrThatGames,
@@ -196,6 +491,12 @@ export const useDatabaseGames = (groupId: string) => {
     createThisOrThatGame,
     createEmojiRiddleGame,
     createTruthLieGame,
+    voteThisOrThat,
+    submitRiddleGuess,
+    submitTruthLieGuess,
+    endGame,
+    deleteGameData,
+    cleanupExpiredGames,
     loadGames
   };
 };

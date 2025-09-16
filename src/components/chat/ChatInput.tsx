@@ -130,8 +130,8 @@ export const ChatInput = ({
   };
 
   return (
-    <div className="w-full px-3 py-2">
-      <div className="flex items-end gap-2 rounded-full bg-zinc-800/70 backdrop-blur px-3 py-2 ring-1 ring-zinc-700 shadow-lg">
+    <div className="w-full px-2 sm:px-3 py-2 bg-background border-t border-border">
+      <div className="flex items-end gap-1 sm:gap-2 rounded-full bg-zinc-800/70 backdrop-blur px-2 sm:px-3 py-2 ring-1 ring-zinc-700 shadow-lg">
         {/* text area */}
         <textarea
           ref={areaRef}
@@ -140,7 +140,7 @@ export const ChatInput = ({
           onChange={(e) => setMessage(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Message..."
-          className="flex-1 resize-none bg-transparent text-zinc-100 placeholder:text-zinc-400 outline-none leading-6 max-h-40 min-h-[40px] py-2"
+          className="flex-1 resize-none bg-transparent text-zinc-100 placeholder:text-zinc-400 outline-none leading-5 sm:leading-6 max-h-32 sm:max-h-40 min-h-[36px] sm:min-h-[40px] py-1.5 sm:py-2 text-sm sm:text-base"
           aria-label="Message input"
         />
 
@@ -157,17 +157,34 @@ export const ChatInput = ({
           <GiphyPicker onGifSelect={onSendGif} disabled={disabled || sendingMessage} />
         </div>
 
+        {/* Send Button */}
+        <button
+          type="button"
+          onClick={handleSendText}
+          disabled={disabled || sendingMessage || !message.trim()}
+          className="p-1.5 sm:p-2 rounded-full hover:bg-zinc-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+          aria-label="Send message"
+        >
+          {sendingMessage ? (
+            <LoadingSpinner size="sm" />
+          ) : (
+            <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+            </svg>
+          )}
+        </button>
+
         {/* plus menu: Game + Voice Room */}
         <div className="relative">
           <button
             type="button"
             onClick={() => setShowMenu((s) => !s)}
-            className="p-2 rounded-full hover:bg-zinc-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="p-1.5 sm:p-2 rounded-full hover:bg-zinc-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 flex-shrink-0"
             aria-expanded={showMenu}
             aria-haspopup="menu"
             aria-label="Open actions"
           >
-            <PlusIcon className="h-7 w-7" />
+            <PlusIcon className="h-5 w-5 sm:h-7 sm:w-7" />
           </button>
 
           {showMenu && (

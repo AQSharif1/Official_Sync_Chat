@@ -73,13 +73,9 @@ export const KarmaDashboard: React.FC = () => {
       if (groupMembership) {
         setCurrentGroup(groupMembership.groups);
 
-        // Get group leaderboard
+        // Get group leaderboard (global group rankings)
         const { data: leaderboard } = await supabase
-          .rpc('get_group_user_karma_leaderboard', {
-            p_group_id: groupMembership.group_id,
-            p_limit: 20,
-            p_offset: 0
-          });
+          .rpc('get_group_karma_leaderboard');
         
         if (leaderboard) {
           setGroupLeaderboard(leaderboard);
@@ -262,9 +258,17 @@ export const KarmaDashboard: React.FC = () => {
                   </div>
                 </ScrollArea>
               ) : (
-                <p className="text-center text-muted-foreground py-8">
-                  Start participating to unlock achievements!
-                </p>
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground mb-4">
+                    Start participating to unlock achievements!
+                  </p>
+                  <div className="text-sm text-muted-foreground">
+                    <p>• Send messages to earn karma</p>
+                    <p>• React to messages for bonus points</p>
+                    <p>• Participate in games and voice rooms</p>
+                    <p>• Level up to unlock special achievements!</p>
+                  </div>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -345,6 +349,9 @@ export const KarmaDashboard: React.FC = () => {
                     <p className="text-sm text-muted-foreground">
                       {currentUserRank.karma_contributed} karma contributed
                     </p>
+                    <div className="text-xs text-muted-foreground">
+                      Out of {userGroupRanking.length} members
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -368,6 +375,9 @@ export const KarmaDashboard: React.FC = () => {
                     <p className="text-sm text-muted-foreground">
                       {currentGroupRank.monthly_karma_points} karma this month
                     </p>
+                    <div className="text-xs text-muted-foreground">
+                      {currentGroupRank.member_count} members
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -375,13 +385,13 @@ export const KarmaDashboard: React.FC = () => {
           </div>
 
           {/* Group members leaderboard */}
-          {userGroupRanking.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Group Leaderboard</CardTitle>
-                <CardDescription>Top contributors this month</CardDescription>
-              </CardHeader>
-              <CardContent>
+          <Card>
+            <CardHeader>
+              <CardTitle>Group Leaderboard</CardTitle>
+              <CardDescription>Top contributors this month</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {!loadingLeaderboards && userGroupRanking.length > 0 ? (
                 <ScrollArea className="h-48">
                   <div className="space-y-2">
                     {userGroupRanking.slice(0, 10).map((member) => (
@@ -405,9 +415,18 @@ export const KarmaDashboard: React.FC = () => {
                     ))}
                   </div>
                 </ScrollArea>
-              </CardContent>
-            </Card>
-          )}
+              ) : loadingLeaderboards ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                  <p className="text-sm text-muted-foreground mt-2">Loading group members...</p>
+                </div>
+              ) : (
+                <p className="text-center text-muted-foreground py-8">
+                  No group members found or you're not in a group yet!
+                </p>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* Global Leaderboard Tab */}

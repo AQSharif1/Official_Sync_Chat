@@ -87,7 +87,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   }, []);
 
   const signUp = async (email: string, password: string) => {
-    const redirectUrl = `${window.location.origin}/auth/callback`;
+    const redirectUrl = 'https://syncchatapp.com/auth/callback';
     
     const { error } = await supabase.auth.signUp({
       email,
@@ -138,7 +138,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   const resendVerification = async (email: string) => {
-    const redirectUrl = `${window.location.origin}/auth/callback`;
+    const redirectUrl = 'https://syncchatapp.com/auth/callback';
     
     const { error } = await supabase.auth.resend({
       type: 'signup',

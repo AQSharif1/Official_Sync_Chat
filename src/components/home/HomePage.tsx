@@ -293,7 +293,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onStartMatching, onViewProfi
               {appCurrentGroup && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                  <span>Live • {(appCurrentGroup as any).actual_member_count || appCurrentGroup.current_members || 0} online</span>
+                  <span>Live • {(appCurrentGroup as any).actual_member_count || appCurrentGroup.current_members || 0} members</span>
                 </div>
               )}
             </CardContent>

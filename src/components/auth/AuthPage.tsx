@@ -19,9 +19,12 @@ export const AuthPage = () => {
   const [showSignupSuccess, setShowSignupSuccess] = useState(false);
   const [signupEmail, setSignupEmail] = useState('');
   const { toast } = useToast();
-  const { signUp, signIn } = useAuth();
+  const { signUp, signIn, resendVerification } = useAuth();
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [showResendVerification, setShowResendVerification] = useState(false);
+  const [resendEmail, setResendEmail] = useState('');
+  const [isResending, setIsResending] = useState(false);
 
 
 
@@ -159,7 +162,7 @@ export const AuthPage = () => {
     setIsLoading(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(forgotPasswordEmail, {
-        redirectTo: `${window.location.origin}/`,
+        redirectTo: 'https://syncchatapp.com/',
       });
 
       if (error) {
@@ -184,6 +187,55 @@ export const AuthPage = () => {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleResendVerification = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resendEmail) {
+      toast({
+        title: "Email required",
+        description: "Please enter your email address.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsResending(true);
+    try {
+      const { error } = await resendVerification(resendEmail);
+      
+      if (error) {
+        // Check if this is the "already verified" message
+        if (error.message?.includes('email_confirmed_at')) {
+          toast({
+            title: "Email Already Verified",
+            description: "Your email is already verified. You can sign in normally.",
+            variant: "default",
+          });
+        } else {
+          toast({
+            title: "Resend failed",
+            description: error.message,
+            variant: "destructive",
+          });
+        }
+      } else {
+        toast({
+          title: "Verification email sent!",
+          description: "Check your inbox for the confirmation link.",
+        });
+        setShowResendVerification(false);
+        setResendEmail('');
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to resend verification email.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsResending(false);
     }
   };
 
@@ -308,15 +360,24 @@ export const AuthPage = () => {
                 </Button>
               </form>
               
-              {/* Forgot Password */}
+              {/* Forgot Password & Resend Verification */}
               <div className="text-center space-y-2">
-                <Button 
-                  variant="link" 
-                  className="text-sm text-muted-foreground hover:text-primary"
-                  onClick={() => setShowForgotPassword(true)}
-                >
-                  Forgot your password?
-                </Button>
+                <div className="flex justify-center gap-4">
+                  <Button 
+                    variant="link" 
+                    className="text-sm text-muted-foreground hover:text-primary"
+                    onClick={() => setShowForgotPassword(true)}
+                  >
+                    Forgot password?
+                  </Button>
+                  <Button 
+                    variant="link" 
+                    className="text-sm text-muted-foreground hover:text-primary"
+                    onClick={() => setShowResendVerification(true)}
+                  >
+                    Resend verification
+                  </Button>
+                </div>
                 <div className="text-xs text-muted-foreground">
                   Need to verify your email?{' '}
                   <Button 
@@ -373,6 +434,61 @@ export const AuthPage = () => {
                             disabled={isLoading}
                           >
                             {isLoading ? "Sending..." : "Send Reset"}
+                          </Button>
+                        </div>
+                      </form>
+                    </div>
+                  </Card>
+                </div>
+              )}
+
+              {/* Resend Verification Modal */}
+              {showResendVerification && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                  <Card className="w-full max-w-md p-6">
+                    <div className="space-y-4">
+                      <div className="text-center">
+                        <h3 className="text-lg font-semibold">Resend Verification Email</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Enter your email to receive a new verification link
+                        </p>
+                      </div>
+                      
+                      <form onSubmit={handleResendVerification} className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="resend-email">Email</Label>
+                          <div className="relative">
+                            <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              id="resend-email"
+                              type="email"
+                              placeholder="Enter your email"
+                              value={resendEmail}
+                              onChange={(e) => setResendEmail(e.target.value)}
+                              className="pl-9"
+                              required
+                            />
+                          </div>
+                        </div>
+                        
+                        <div className="flex gap-2">
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            className="flex-1"
+                            onClick={() => {
+                              setShowResendVerification(false);
+                              setResendEmail('');
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                          <Button 
+                            type="submit" 
+                            className="flex-1"
+                            disabled={isResending}
+                          >
+                            {isResending ? "Sending..." : "Send Verification"}
                           </Button>
                         </div>
                       </form>

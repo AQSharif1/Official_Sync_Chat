@@ -17,12 +17,6 @@ interface VoiceParticipant {
   joinedAt: string;
 }
 
-interface VoiceMessage {
-  id: string;
-  type: 'user_speech' | 'ai_response';
-  content: string;
-  timestamp: Date;
-}
 
 interface VoiceRoomState {
   isConnected: boolean;
@@ -33,8 +27,6 @@ interface VoiceRoomState {
   isDeafened: boolean;
   isSpeaking: boolean;
   handRaised: boolean;
-  messages: VoiceMessage[];
-  currentTranscript: string;
   isCollapsed: boolean;
   isMinimized: boolean;
 }
@@ -152,8 +144,6 @@ export const VoiceRoomProvider: React.FC<VoiceRoomProviderProps> = ({ children }
     isDeafened: false,
     isSpeaking: false,
     handRaised: false,
-    messages: [],
-    currentTranscript: '',
     isCollapsed: true,
     isMinimized: false,
   });
@@ -223,50 +213,11 @@ export const VoiceRoomProvider: React.FC<VoiceRoomProviderProps> = ({ children }
     presenceStateRef.current = 'idle';
   }, []);
 
-  // Voice message handler for OpenAI Realtime
+  // Simplified voice message handler (no longer needed for basic voice room)
   const handleVoiceMessage = useCallback((message: any) => {
-    if (message.type === 'response.audio_transcript.delta') {
-      setState(prev => ({
-        ...prev,
-        currentTranscript: prev.currentTranscript + message.delta,
-        isSpeaking: true
-      }));
-    } else if (message.type === 'response.audio_transcript.done') {
-      setState(prev => {
-        const newMessages = prev.currentTranscript.trim() 
-          ? [...prev.messages.slice(-50), { // Keep only last 50 messages to prevent memory leak
-              id: crypto.randomUUID(),
-              type: 'ai_response' as const,
-              content: prev.currentTranscript.trim(),
-              timestamp: new Date(),
-            }]
-          : prev.messages;
-
-        return {
-          ...prev,
-          messages: newMessages,
-          currentTranscript: '',
-          isSpeaking: false
-        };
-      });
-    } else if (message.type === 'conversation.item.input_audio_transcription.completed') {
-      setState(prev => ({
-        ...prev,
-        messages: [...prev.messages.slice(-50), { // Keep only last 50 messages to prevent memory leak
-          id: crypto.randomUUID(),
-          type: 'user_speech' as const,
-          content: message.transcript,
-          timestamp: new Date(),
-        }]
-      }));
-    } else if (message.type === 'error') {
-      toast({
-        title: "Voice Room Error",
-        description: message.message || "An error occurred in the voice room",
-        variant: "destructive",
-      });
-    }
-  }, [toast]);
+    // Voice messages are no longer supported - this is just a placeholder
+    console.log('Voice message received (not processed):', message.type);
+  }, []);
 
   // Improved presence sync handler with state machine
   const handlePresenceSync = useCallback(() => {
@@ -442,8 +393,6 @@ export const VoiceRoomProvider: React.FC<VoiceRoomProviderProps> = ({ children }
         isConnecting: false,
         participants: [],
         participantCount: 0,
-        messages: [],
-        currentTranscript: '',
         isSpeaking: false,
         isCollapsed: true
       }));

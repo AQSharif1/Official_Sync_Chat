@@ -158,7 +158,7 @@ export const useAccountManagement = () => {
         email: email.toLowerCase().trim(),
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/`,
+          emailRedirectTo: 'https://syncchatapp.com/auth/callback',
           data: {
             email_confirm: true, // Force email confirmation
             signup_timestamp: Date.now() // Ensure unique signup
@@ -198,7 +198,7 @@ export const useAccountManagement = () => {
               type: 'signup',
               email: email.toLowerCase().trim(),
               options: {
-                emailRedirectTo: `${window.location.origin}/`
+                emailRedirectTo: 'https://syncchatapp.com/auth/callback'
               }
             });
             
@@ -218,7 +218,7 @@ export const useAccountManagement = () => {
               email: email.toLowerCase().trim(),
               password,
               options: {
-                emailRedirectTo: `${window.location.origin}/`,
+                emailRedirectTo: 'https://syncchatapp.com/auth/callback',
                 data: {
                   retry_signup: true,
                   signup_timestamp: Date.now()
