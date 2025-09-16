@@ -7,7 +7,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { ChatMessage } from '@/hooks/useChatMessages';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserMood } from '@/hooks/useUserMood';
-import { useOptimizedOnlineStatus } from '@/hooks/useOptimizedOnlineStatus';
+import { useSimpleOnlineStatus } from '@/hooks/useSimpleOnlineStatus';
 import { MessageModerationMenu } from './MessageModerationMenu';
 import { FlagIndicator } from './FlagIndicator';
 
@@ -47,7 +47,7 @@ export const MessageBubble = ({
   const handleReaction = onReaction || onReact;
   const { user } = useAuth();
   const { getUserDisplayName } = useUserMood();
-  const { getUserOnlineStatus } = useOptimizedOnlineStatus(groupId || '');
+  const { getUserOnlineStatus } = useSimpleOnlineStatus(groupId || '');
   const [isPlaying, setIsPlaying] = useState(false);
   const [showReactions, setShowReactions] = useState(false);
   const [flaggedMessage, setFlaggedMessage] = useState<FlaggedMessage | null>(null);

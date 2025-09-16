@@ -28,7 +28,7 @@ import { useChatMessages, ChatMessage } from '@/hooks/useChatMessages';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { usePinnedMessages } from '@/hooks/usePinnedMessages';
 import { useAuth } from '@/hooks/useAuth';
-import { useOptimizedOnlineStatus } from '@/hooks/useOptimizedOnlineStatus';
+import { useSimpleOnlineStatus } from '@/hooks/useSimpleOnlineStatus';
 import { useEngagement } from '@/hooks/useEngagement';
 import { useClearedMessages } from '@/hooks/useClearedMessages';
 import { useDatabaseGames } from '@/hooks/useDatabaseGames';
@@ -36,7 +36,7 @@ import { useGamePreferences } from '@/hooks/useGamePreferences';
 import { usePremium } from '@/hooks/usePremium';
 
 import { useAppState } from '@/hooks/useAppState';
-import { useUnifiedRealtimeChat } from '@/hooks/useUnifiedRealtimeChat';
+import { useSimpleRealtimeChat } from '@/hooks/useSimpleRealtimeChat';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { 
@@ -96,7 +96,7 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
   const { messages, loading: messagesLoading, addMessage, addReaction, refetch } = useChatMessages(groupId);
   const { typingUsers } = useTypingIndicator(groupId, user?.id || '');
   const { pinnedMessages, pinMessage, unpinMessage } = usePinnedMessages(groupId);
-  const { getOnlineCount, onlineUsers } = useOptimizedOnlineStatus(groupId);
+  const { getOnlineCount, onlineUsers } = useSimpleOnlineStatus(groupId);
   const onlineCount = getOnlineCount();
   const appState = useAppState();
   const [userProfile, setUserProfile] = useState<{ username: string } | null>(null);
@@ -116,8 +116,8 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
   const { clearedMessageIds, clearMessages, isMessageCleared } = useClearedMessages(groupId);
   const [groupKarmaTotal, setGroupKarmaTotal] = useState<number>(0);
 
-  // Unified real-time chat
-  const { isConnected } = useUnifiedRealtimeChat({
+  // Simple real-time chat
+  const { isConnected } = useSimpleRealtimeChat({
     groupId,
     onNewMessage: (message: ChatMessage) => {
       // Auto-scroll when new message arrives - FIXED: Proper timeout cleanup

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from './useAuth';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -124,8 +124,19 @@ export const useEngagement = () => {
     }
   };
 
+  // Rate limiting for activity tracking
+  const lastActivityTime = useRef<number>(0);
+  const ACTIVITY_COOLDOWN = 1000; // 1 second minimum between activities
+
   const trackActivity = async (activityType: 'message' | 'reaction' | 'tool' | 'group_switch' | 'reconnect' | 'voice_note' | 'voice_participation' | 'game_win' | 'game_participation' | 'daily_login' | 'streak_bonus') => {
     if (!user) return;
+
+    // Rate limiting: prevent excessive API calls
+    const now = Date.now();
+    if (now - lastActivityTime.current < ACTIVITY_COOLDOWN) {
+      return; // Skip if called too frequently
+    }
+    lastActivityTime.current = now;
 
     try {
       const { error } = await supabase.rpc('update_user_engagement', {
@@ -138,9 +149,11 @@ export const useEngagement = () => {
         return;
       }
 
-      // Refresh data after tracking
-      await fetchEngagementData();
-      await fetchAchievements();
+      // Refresh data after tracking (debounced)
+      setTimeout(() => {
+        fetchEngagementData();
+        fetchAchievements();
+      }, 500);
     } catch (error) {
       console.error('Error tracking activity:', error);
     }

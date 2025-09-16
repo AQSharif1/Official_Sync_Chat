@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Wifi, WifiOff, Circle } from 'lucide-react';
-import { useOptimizedOnlineStatus } from '@/hooks/useOptimizedOnlineStatus';
+import { useSimpleOnlineStatus } from '@/hooks/useSimpleOnlineStatus';
 import { useAuth } from '@/hooks/useAuth';
 
 interface OnlineStatusToggleProps {
@@ -13,7 +13,7 @@ interface OnlineStatusToggleProps {
 
 export const OnlineStatusToggle = ({ groupId, className = '' }: OnlineStatusToggleProps) => {
   const { user } = useAuth();
-  const { isOnline, setOnline, setOffline } = useOptimizedOnlineStatus(groupId);
+  const { isOnline, setOnline, setOffline } = useSimpleOnlineStatus(groupId);
   const [isChanging, setIsChanging] = useState(false);
 
   // Don't render if user is not logged in
