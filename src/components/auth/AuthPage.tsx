@@ -302,6 +302,26 @@ export const AuthPage = () => {
               <p><strong>Have an account?</strong> Use Sign In tab. <strong>New here?</strong> Use Sign Up tab to create an account.</p>
             </div>
 
+            {/* Resend Verification Section - More Prominent */}
+            <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
+              <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+                <Mail className="w-4 h-4" />
+                <span className="text-sm font-medium">Need to verify your email?</span>
+              </div>
+              <p className="text-xs text-blue-600 dark:text-blue-400 mt-1 mb-3">
+                If you haven't received a verification email, click below to resend it.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowResendVerification(true)}
+                className="w-full border-blue-200 text-blue-700 hover:bg-blue-100 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-950/40"
+              >
+                <Mail className="w-4 h-4 mr-2" />
+                Resend Verification Email
+              </Button>
+            </div>
+
             <TabsContent value="signin" className="space-y-4">
               <form onSubmit={handleSignIn} className="space-y-4">
                 <div className="space-y-2">

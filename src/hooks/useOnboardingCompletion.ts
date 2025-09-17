@@ -123,10 +123,39 @@ export const useOnboardingCompletion = () => {
         
         console.log('📝 Inserting profile data:', profileData);
         
-        const { data: profileResult, error: profileError } = await supabase
-          .from('profiles')
-          .upsert(profileData, { onConflict: 'profiles_user_id_key' })
-          .select();
+        // Try upsert with constraint first, fallback to insert if constraint doesn't exist
+        let profileResult, profileError;
+        
+        try {
+          const result = await supabase
+            .from('profiles')
+            .upsert(profileData, { onConflict: 'profiles_user_id_key' })
+            .select();
+          profileResult = result.data;
+          profileError = result.error;
+        } catch (constraintError: any) {
+          console.log('⚠️ Constraint-based upsert failed, trying insert approach:', constraintError.message);
+          
+          // Fallback: Try to insert directly, then update if it exists
+          const insertResult = await supabase
+            .from('profiles')
+            .insert(profileData)
+            .select();
+            
+          if (insertResult.error && insertResult.error.code === '23505') {
+            // Duplicate key error, try update instead
+            const updateResult = await supabase
+              .from('profiles')
+              .update(profileData)
+              .eq('user_id', user.id)
+              .select();
+            profileResult = updateResult.data;
+            profileError = updateResult.error;
+          } else {
+            profileResult = insertResult.data;
+            profileError = insertResult.error;
+          }
+        }
 
         console.log('💡 Profile upsert result:', { data: profileResult, error: profileError });
 
@@ -139,7 +168,7 @@ export const useOnboardingCompletion = () => {
           });
           
           // Try alternative approach if constraint name is wrong
-          if (profileError.code === '42704') { // undefined_column error
+          if (profileError.code === '42703') { // undefined_object error (constraint doesn't exist)
             console.log('🔄 Trying alternative profile creation method...');
             const { data: altResult, error: altError } = await supabase
               .from('profiles')

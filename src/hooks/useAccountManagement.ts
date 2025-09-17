@@ -75,6 +75,12 @@ export const useAccountManagement = () => {
 
       if (error) {
         console.error('Error deleting account:', error);
+        console.error('Error details:', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        });
         toast({
           title: "Deletion Failed",
           description: `Failed to delete account: ${error.message}`,
@@ -85,6 +91,7 @@ export const useAccountManagement = () => {
 
       const result = data as any;
       if (!result?.success) {
+        console.error('RPC function returned failure:', result);
         toast({
           title: "Deletion Failed", 
           description: result?.error || 'Failed to delete account',
@@ -92,6 +99,8 @@ export const useAccountManagement = () => {
         });
         return { success: false, error: result?.error || 'Failed to delete account' };
       }
+
+      console.log('Account deletion successful:', result);
 
       // Clear any local storage data (except theme and user preferences)
       localStorage.removeItem('clearedMessages');

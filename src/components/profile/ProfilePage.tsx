@@ -871,7 +871,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ className, onGoHome })
                         className="ml-4"
                       >
                         <Trash2 className="w-4 h-4 mr-2" />
-                        Delete Account
+                        {accountLoading ? "Deleting..." : "Delete Account"}
                       </Button>
                     </div>
                   </div>

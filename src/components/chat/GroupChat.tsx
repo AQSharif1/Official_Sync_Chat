@@ -114,6 +114,11 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
   // Use database-based cleared messages instead of localStorage
   const { clearedMessageIds, clearMessages, isMessageCleared } = useClearedMessages(groupId);
   const [groupKarmaTotal, setGroupKarmaTotal] = useState<number>(0);
+  
+  // Check if a game is cleared by the current user
+  const isGameCleared = useCallback((gameId: string) => {
+    return clearedMessageIds.includes(gameId);
+  }, [clearedMessageIds]);
 
   // Simple real-time chat
   const { isConnected } = useSimpleRealtimeChat({
@@ -1043,7 +1048,9 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
             {(totPrompts.length > 0 || riddles.length > 0 || truthLieGames.length > 0) && (
               <div className="space-y-4 mt-6 pt-4 border-t">
                 {/* Two Truths and a Lie Games */}
-                {truthLieGames.map(game => {
+                {truthLieGames
+                  .filter(game => !isGameCleared(game.id))
+                  .map(game => {
                   // Process guesses data
                   const guesses = game.truth_lie_guesses || [];
                   const processedGuesses = guesses.map(guess => ({
@@ -1096,7 +1103,9 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
                 })}
 
                 {/* This or That Prompts */}
-                {totPrompts.map(prompt => {
+                {totPrompts
+                  .filter(prompt => !isGameCleared(prompt.id))
+                  .map(prompt => {
                   // Process votes data
                   const votes = prompt.this_or_that_votes || [];
                   const optionAVotes = votes.filter(v => v.choice === 'A');
@@ -1152,7 +1161,9 @@ export const GroupChat = ({ groupId, groupName, groupVibe, memberCount, onBack, 
                 })}
                 
                 {/* Emoji Riddles */}
-                {riddles.map(riddle => {
+                {riddles
+                  .filter(riddle => !isGameCleared(riddle.id))
+                  .map(riddle => {
                   // Process guesses data
                   const guesses = riddle.emoji_riddle_guesses || [];
                   const processedGuesses = guesses.map(guess => ({

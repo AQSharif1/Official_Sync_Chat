@@ -22,8 +22,9 @@ interface GroupKarmaData {
 
 interface UserKarmaRanking {
   user_id: string;
-  username: string;
-  karma_contributed: number;
+  display_name: string;
+  avatar_url: string;
+  karma_points: number;
   rank: number;
 }
 
@@ -406,10 +407,10 @@ export const KarmaDashboard: React.FC = () => {
                           )}>
                             {member.rank}
                           </div>
-                          <span className="font-medium">{member.username}</span>
+                          <span className="font-medium">{member.display_name}</span>
                         </div>
                         <span className="text-sm text-muted-foreground">
-                          {member.karma_contributed} karma
+                          {member.karma_points} karma
                         </span>
                       </div>
                     ))}
