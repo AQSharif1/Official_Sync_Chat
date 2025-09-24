@@ -123,39 +123,12 @@ export const useOnboardingCompletion = () => {
         
         console.log('📝 Inserting profile data:', profileData);
         
-        // Try upsert with constraint first, fallback to insert if constraint doesn't exist
-        let profileResult, profileError;
-        
-        try {
-          const result = await supabase
-            .from('profiles')
-            .upsert(profileData, { onConflict: 'profiles_user_id_key' })
-            .select();
-          profileResult = result.data;
-          profileError = result.error;
-        } catch (constraintError: any) {
-          console.log('⚠️ Constraint-based upsert failed, trying insert approach:', constraintError.message);
-          
-          // Fallback: Try to insert directly, then update if it exists
-          const insertResult = await supabase
-            .from('profiles')
-            .insert(profileData)
-            .select();
-            
-          if (insertResult.error && insertResult.error.code === '23505') {
-            // Duplicate key error, try update instead
-            const updateResult = await supabase
-              .from('profiles')
-              .update(profileData)
-              .eq('user_id', user.id)
-              .select();
-            profileResult = updateResult.data;
-            profileError = updateResult.error;
-          } else {
-            profileResult = insertResult.data;
-            profileError = insertResult.error;
-          }
-        }
+        // Use simple upsert without constraint specification to avoid constraint issues
+        // Supabase will automatically use the primary key (user_id) for conflict resolution
+        const { data: profileResult, error: profileError } = await supabase
+          .from('profiles')
+          .upsert(profileData)
+          .select();
 
         console.log('💡 Profile upsert result:', { data: profileResult, error: profileError });
 
@@ -167,21 +140,33 @@ export const useOnboardingCompletion = () => {
             hint: profileError.hint
           });
           
-          // Try alternative approach if constraint name is wrong
-          if (profileError.code === '42703') { // undefined_object error (constraint doesn't exist)
-            console.log('🔄 Trying alternative profile creation method...');
-            const { data: altResult, error: altError } = await supabase
-              .from('profiles')
-              .upsert(profileData)
-              .select();
-            
-            if (altError) {
-              throw new Error(`Profile creation failed: ${altError.message}`);
-            }
-            return altResult;
-          }
+          // If upsert fails, try insert then update approach
+          console.log('🔄 Trying insert/update approach...');
           
-          throw new Error(`Profile creation failed: ${profileError.message}`);
+          // First try to insert
+          const insertResult = await supabase
+            .from('profiles')
+            .insert(profileData)
+            .select();
+            
+          if (insertResult.error && insertResult.error.code === '23505') {
+            // Duplicate key error, try update instead
+            console.log('🔄 Duplicate key detected, trying update...');
+            const updateResult = await supabase
+              .from('profiles')
+              .update(profileData)
+              .eq('user_id', user.id)
+              .select();
+              
+            if (updateResult.error) {
+              throw new Error(`Profile creation failed: ${updateResult.error.message}`);
+            }
+            return updateResult.data;
+          } else if (insertResult.error) {
+            throw new Error(`Profile creation failed: ${insertResult.error.message}`);
+          } else {
+            return insertResult.data;
+          }
         }
         
         console.log('✅ Profile created/updated successfully');

@@ -35,7 +35,7 @@ export interface EnhancedAchievement {
 }
 
 export interface KarmaActivity {
-  type: 'message' | 'reaction' | 'voice' | 'game' | 'achievement';
+  type: 'message' | 'reaction' | 'voice_participation' | 'voice_note' | 'game_win' | 'game_participation' | 'achievement';
   points: number;
   description: string;
   timestamp: Date;

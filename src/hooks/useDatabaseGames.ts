@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { useEnhancedKarma } from '@/hooks/useEnhancedKarma';
 
 export interface DatabaseGame {
   id: string;
@@ -33,6 +34,7 @@ export interface TruthLieGame extends DatabaseGame {
 
 export const useDatabaseGames = (groupId: string) => {
   const { user } = useAuth();
+  const { trackKarmaActivity } = useEnhancedKarma();
   const [thisOrThatGames, setThisOrThatGames] = useState<ThisOrThatGame[]>([]);
   const [emojiRiddleGames, setEmojiRiddleGames] = useState<EmojiRiddleGame[]>([]);
   const [truthLieGames, setTruthLieGames] = useState<TruthLieGame[]>([]);
@@ -67,7 +69,8 @@ export const useDatabaseGames = (groupId: string) => {
           )
         `)
         .eq('group_id', groupId)
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .gt('expires_at', new Date().toISOString());
       
       // Only add the NOT IN filter if there are cleared games
       if (clearedGameIds.length > 0) {
@@ -90,7 +93,8 @@ export const useDatabaseGames = (groupId: string) => {
           )
         `)
         .eq('group_id', groupId)
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .gt('expires_at', new Date().toISOString());
       
       // Only add the NOT IN filter if there are cleared games
       if (clearedGameIds.length > 0) {
@@ -114,7 +118,8 @@ export const useDatabaseGames = (groupId: string) => {
           )
         `)
         .eq('group_id', groupId)
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .gt('expires_at', new Date().toISOString());
       
       // Only add the NOT IN filter if there are cleared games
       if (clearedGameIds.length > 0) {
@@ -167,13 +172,16 @@ export const useDatabaseGames = (groupId: string) => {
         throw error;
       }
       
+      // Track karma for game creation
+      await trackKarmaActivity('game_participation', 2, 'Created This or That game', 1.0, groupId);
+      
       setThisOrThatGames(prev => [data, ...prev]);
       return data;
     } catch (error) {
       console.error('Error creating This or That game:', error);
       return null;
     }
-  }, [user?.id, groupId]);
+  }, [user?.id, groupId, trackKarmaActivity]);
 
   // Create Emoji Riddle game
   const createEmojiRiddleGame = useCallback(async (emojis: string, answer: string, hint?: string, funFact?: string, durationMinutes: number = 5) => {
@@ -196,13 +204,16 @@ export const useDatabaseGames = (groupId: string) => {
 
       if (error) throw error;
       
+      // Track karma for game creation
+      await trackKarmaActivity('game_participation', 2, 'Created Emoji Riddle game', 1.0, groupId);
+      
       setEmojiRiddleGames(prev => [data, ...prev]);
       return data;
     } catch (error) {
       console.error('Error creating Emoji Riddle game:', error);
       return null;
     }
-  }, [user?.id, groupId]);
+  }, [user?.id, groupId, trackKarmaActivity]);
 
   // Create Truth Lie game
   const createTruthLieGame = useCallback(async (statements: string[], lieStatementNumber: number, durationMinutes: number = 5) => {
@@ -225,13 +236,16 @@ export const useDatabaseGames = (groupId: string) => {
 
       if (error) throw error;
       
+      // Track karma for game creation
+      await trackKarmaActivity('game_participation', 2, 'Created Two Truths and a Lie game', 1.0, groupId);
+      
       setTruthLieGames(prev => [data, ...prev]);
       return data;
     } catch (error) {
       console.error('Error creating Truth Lie game:', error);
       return null;
     }
-  }, [user?.id, groupId]);
+  }, [user?.id, groupId, trackKarmaActivity]);
 
   // Vote on This or That game
   const voteThisOrThat = useCallback(async (gameId: string, optionId: string) => {
@@ -248,6 +262,9 @@ export const useDatabaseGames = (groupId: string) => {
 
       if (error) throw error;
 
+      // Track karma for game participation
+      await trackKarmaActivity('game_participation', 2, 'Voted on This or That game', 1.0, groupId);
+
       // Reload games to get updated vote counts
       await loadGames();
       return true;
@@ -255,7 +272,7 @@ export const useDatabaseGames = (groupId: string) => {
       console.error('Error voting on This or That:', error);
       return false;
     }
-  }, [user?.id, groupId, loadGames]);
+  }, [user?.id, groupId, loadGames, trackKarmaActivity]);
 
   // Submit guess for Emoji Riddle game
   const submitRiddleGuess = useCallback(async (gameId: string, guess: string) => {
@@ -272,6 +289,9 @@ export const useDatabaseGames = (groupId: string) => {
 
       if (error) throw error;
 
+      // Track karma for game participation
+      await trackKarmaActivity('game_participation', 2, 'Guessed Emoji Riddle', 1.0, groupId);
+
       // Reload games to get updated guesses
       await loadGames();
       return true;
@@ -279,7 +299,7 @@ export const useDatabaseGames = (groupId: string) => {
       console.error('Error submitting riddle guess:', error);
       return false;
     }
-  }, [user?.id, groupId, loadGames]);
+  }, [user?.id, groupId, loadGames, trackKarmaActivity]);
 
   // Submit guess for Truth Lie game
   const submitTruthLieGuess = useCallback(async (gameId: string, guessedLieNumber: number) => {
@@ -308,6 +328,11 @@ export const useDatabaseGames = (groupId: string) => {
 
       if (error) throw error;
 
+      // Track karma for game participation (and bonus for correct guess)
+      const karmaPoints = isCorrect ? 5 : 2; // 5 points for correct, 2 for participation
+      const karmaDescription = isCorrect ? 'Correctly guessed Two Truths and a Lie' : 'Guessed Two Truths and a Lie';
+      await trackKarmaActivity(isCorrect ? 'game_win' : 'game_participation', karmaPoints, karmaDescription, 1.0, groupId);
+
       // Reload games to get updated guesses
       await loadGames();
       return true;
@@ -315,7 +340,7 @@ export const useDatabaseGames = (groupId: string) => {
       console.error('Error submitting truth lie guess:', error);
       return false;
     }
-  }, [user?.id, groupId, loadGames]);
+  }, [user?.id, groupId, loadGames, trackKarmaActivity]);
 
   // End/cleanup a game by setting is_active to false
   const endGame = useCallback(async (gameType: 'thisorthat' | 'emojiriddle' | 'twoTruths', gameId: string) => {

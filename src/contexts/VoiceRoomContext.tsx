@@ -1,6 +1,5 @@
-import React, { createContext, useContext, useRef, useState, useCallback, useEffect, useMemo } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { RealtimeVoiceChat } from '@/utils/RealtimeAudio';
+import React, { createContext, useContext, useRef, useState, useCallback, useMemo } from 'react';
+import { WebRTCVoiceChat } from '@/utils/WebRTCVoiceChat';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { useEngagement } from '@/hooks/useEngagement';
@@ -15,8 +14,8 @@ interface VoiceParticipant {
   isSpeaking: boolean;
   handRaised: boolean;
   joinedAt: string;
+  hasMicrophone: boolean;
 }
-
 
 interface VoiceRoomState {
   isConnected: boolean;
@@ -42,91 +41,14 @@ interface VoiceRoomActions {
   getConnectionStatus: () => { isConnected: boolean; participantCount: number };
 }
 
-type VoiceRoomContextType = VoiceRoomState & VoiceRoomActions;
+interface VoiceRoomContextType extends VoiceRoomState, VoiceRoomActions {}
 
-// Create context
 const VoiceRoomContext = createContext<VoiceRoomContextType | undefined>(undefined);
-
-// Custom hook to use voice room context
-export const useVoiceRoom = () => {
-  const context = useContext(VoiceRoomContext);
-  if (!context) {
-    throw new Error('useVoiceRoom must be used within a VoiceRoomProvider');
-  }
-  return context;
-};
 
 // Provider component
 interface VoiceRoomProviderProps {
   children: React.ReactNode;
 }
-
-// Global Audio Context Manager
-class AudioContextManager {
-  private static instance: AudioContextManager;
-  private audioContext: AudioContext | null = null;
-  private refCount = 0;
-
-  static getInstance(): AudioContextManager {
-    if (!AudioContextManager.instance) {
-      AudioContextManager.instance = new AudioContextManager();
-    }
-    return AudioContextManager.instance;
-  }
-
-  async getContext(): Promise<AudioContext> {
-    if (!this.audioContext || this.audioContext.state === 'closed') {
-      this.audioContext = new AudioContext({
-        sampleRate: 24000,
-      });
-    }
-    
-    if (this.audioContext.state === 'suspended') {
-      await this.audioContext.resume();
-    }
-    
-    this.refCount++;
-    return this.audioContext;
-  }
-
-  releaseContext(): void {
-    this.refCount--;
-    
-    // Only close when no more references
-    if (this.refCount <= 0 && this.audioContext) {
-      this.audioContext.close();
-      this.audioContext = null;
-      this.refCount = 0;
-    }
-  }
-
-  forceClose(): void {
-    if (this.audioContext) {
-      this.audioContext.close();
-      this.audioContext = null;
-    }
-    this.refCount = 0;
-  }
-}
-
-// Custom useDebounce hook with proper cleanup
-const useDebounce = (func: Function, wait: number) => {
-  const timeoutRef = useRef<NodeJS.Timeout>();
-  
-  const debounced = useCallback((...args: any[]) => {
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    timeoutRef.current = setTimeout(() => func(...args), wait);
-  }, [func, wait]);
-  
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    };
-  }, []);
-  
-  return debounced;
-};
 
 export const VoiceRoomProvider: React.FC<VoiceRoomProviderProps> = ({ children }) => {
   const { user } = useAuth();
@@ -149,109 +71,9 @@ export const VoiceRoomProvider: React.FC<VoiceRoomProviderProps> = ({ children }
   });
 
   // Refs for stable references
-  const voiceChatRef = useRef<RealtimeVoiceChat | null>(null);
-  const channelRef = useRef<any>(null);
+  const voiceChatRef = useRef<WebRTCVoiceChat | null>(null);
   const currentGroupId = useRef<string | null>(null);
-  const presenceUpdateInProgress = useRef(false);
-  const latestPresenceDataRef = useRef<any>(null);
-  
-  // Presence state machine refs
-  const presenceStateRef = useRef<'idle' | 'syncing' | 'updating'>('idle');
-  const presenceQueueRef = useRef<Array<() => Promise<void>>>([]);
-
-  // Cleanup tracking refs - prevents infinite loops
-  const cleanupFunctions = useRef<(() => void)[]>([]);
-  const isCleaningUp = useRef(false);
-
-  // Audio context manager
-  const audioContextManager = AudioContextManager.getInstance();
-
-  // Add cleanup function to tracking
-  const addCleanup = useCallback((fn: () => void) => {
-    cleanupFunctions.current.push(fn);
-  }, []);
-
-  // Debounced presence update with proper cleanup
-  const debouncedPresenceUpdate = useDebounce(async () => {
-    if (!channelRef.current || 
-        presenceUpdateInProgress.current || 
-        !latestPresenceDataRef.current) return;
-    
-    presenceUpdateInProgress.current = true;
-    
-    try {
-      await channelRef.current.track(latestPresenceDataRef.current);
-      latestPresenceDataRef.current = null; // Clear after use
-    } catch (error) {
-      // Silent error handling for production
-    } finally {
-      setTimeout(() => {
-        presenceUpdateInProgress.current = false;
-      }, 100);
-    }
-  }, 500);
-
-  // Unified presence processor to prevent race conditions
-  const processPresenceUpdate = useCallback(async (updateFn: () => Promise<void>) => {
-    presenceQueueRef.current.push(updateFn);
-    
-    if (presenceStateRef.current !== 'idle') return;
-    
-    presenceStateRef.current = 'syncing';
-    
-    while (presenceQueueRef.current.length > 0) {
-      const update = presenceQueueRef.current.shift();
-      if (update) {
-        try {
-          await update();
-        } catch (error) {
-          // Silent error handling for production
-        }
-      }
-    }
-    
-    presenceStateRef.current = 'idle';
-  }, []);
-
-  // Simplified voice message handler (no longer needed for basic voice room)
-  const handleVoiceMessage = useCallback((message: any) => {
-    // Voice messages are no longer supported - this is just a placeholder
-    console.log('Voice message received (not processed):', message.type);
-  }, []);
-
-  // Improved presence sync handler with state machine
-  const handlePresenceSync = useCallback(() => {
-    processPresenceUpdate(async () => {
-      if (!channelRef.current) return;
-
-      const newState = channelRef.current.presenceState() || {};
-      const newParticipants: VoiceParticipant[] = [];
-      
-      Object.keys(newState).forEach(key => {
-        const presences = newState[key];
-        if (presences && presences.length > 0) {
-          const participant = presences[0];
-          if (participant.userId !== user?.id) {
-            newParticipants.push({
-              userId: participant.userId,
-              name: participant.name,
-              isMuted: participant.isMuted || false,
-              isDeafened: participant.isDeafened || false,
-              isSpeaking: participant.isSpeaking || false,
-              handRaised: participant.handRaised || false,
-              joinedAt: participant.joinedAt
-            });
-          }
-        }
-      });
-
-      setState(prev => ({
-        ...prev,
-        participants: newParticipants,
-        participantCount: newParticipants.length + (prev.isConnected ? 1 : 0)
-      }));
-    });
-  }, [user?.id, processPresenceUpdate]);
+  const currentGroupName = useRef<string | null>(null);
 
   // Connection management
   const joinVoiceRoom = useCallback(async (groupId: string, groupName: string, enableMicrophone: boolean = false) => {
@@ -275,79 +97,76 @@ export const VoiceRoomProvider: React.FC<VoiceRoomProviderProps> = ({ children }
     setState(prev => ({ ...prev, isConnecting: true }));
 
     try {
-      // Initialize OpenAI Realtime voice chat only if microphone is enabled
-      if (enableMicrophone) {
-        const handleConnectionChange = (connected: boolean) => {
-          if (!connected) {
+      const userName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'User';
+
+      // Initialize WebRTC voice chat
+      voiceChatRef.current = new WebRTCVoiceChat(
+        groupId,
+        user.id,
+        userName,
+        {
+          onParticipantJoined: (participant) => {
+            setState(prev => ({
+              ...prev,
+              participants: [...prev.participants, participant],
+              participantCount: prev.participantCount + 1,
+            }));
+          },
+          onParticipantLeft: (userId) => {
+            setState(prev => ({
+              ...prev,
+              participants: prev.participants.filter(p => p.userId !== userId),
+              participantCount: Math.max(0, prev.participantCount - 1),
+            }));
+          },
+          onParticipantUpdated: (participant) => {
+            setState(prev => ({
+              ...prev,
+              participants: prev.participants.map(p => 
+                p.userId === participant.userId ? participant : p
+              ),
+            }));
+          },
+          onConnectionStateChange: (connected) => {
+            if (!connected) {
+              toast({
+                title: "Voice Connection Lost",
+                description: "Lost connection to voice room. Trying to reconnect...",
+                variant: "destructive",
+              });
+            }
+          },
+          onError: (error) => {
             toast({
-              title: "Voice Connection Lost",
-              description: "Lost connection to voice room. Trying to reconnect...",
+              title: "Voice Room Error",
+              description: error,
               variant: "destructive",
             });
-          }
-        };
-
-        voiceChatRef.current = new RealtimeVoiceChat(
-          handleVoiceMessage,
-          handleConnectionChange
-        );
-
-        await voiceChatRef.current.connect();
-      }
-
-      // Set up Supabase realtime channel
-      const channel = supabase.channel(`voice-${groupId}`, {
-        config: {
-          presence: { key: user.id }
+          },
         }
-      });
+      );
 
-      channelRef.current = channel;
+      await voiceChatRef.current.connect(enableMicrophone);
+
       currentGroupId.current = groupId;
+      currentGroupName.current = groupName;
 
-      // Set up presence handlers
-      channel
-        .on('presence', { event: 'sync' }, handlePresenceSync)
-        .on('presence', { event: 'join' }, ({ newPresences }) => {
-          console.log('User joined voice room:', newPresences);
-        })
-        .on('presence', { event: 'leave' }, ({ leftPresences }) => {
-          console.log('User left voice room:', leftPresences);
-        });
+      setState(prev => ({
+        ...prev,
+        isConnected: true,
+        isConnecting: false,
+        isCollapsed: false,
+        participants: voiceChatRef.current?.getParticipants() || [],
+        participantCount: voiceChatRef.current?.getParticipantCount() || 0,
+      }));
 
-      // Subscribe and track presence
-      await channel.subscribe(async (status) => {
-        if (status === 'SUBSCRIBED') {
-          const presenceData = {
-            userId: user.id,
-            name: user.email?.split('@')[0] || 'User',
-            isMuted: !enableMicrophone, // Muted if no microphone access
-            isDeafened: false,
-            isSpeaking: false,
-            handRaised: false,
-            joinedAt: new Date().toISOString(),
-            hasMicrophone: enableMicrophone
-          };
+      // Track engagement
+      trackActivity('voice_participation');
+      trackKarmaActivity('voice_participation', 3, 'Joined voice room', 1.0, groupId);
 
-          // Store in ref for debounced update
-          latestPresenceDataRef.current = presenceData;
-          debouncedPresenceUpdate();
-          
-          setState(prev => ({
-            ...prev,
-            isConnected: true,
-            isConnecting: false,
-            isCollapsed: false // Auto-expand when joining
-          }));
-
-          // Track karma for voice participation with group ID
-          trackKarmaActivity('voice', 3, 'Joined voice room', 1.0, groupId);
-
-          toast({
-            title: "Voice Room Connected",
-            description: `Connected to ${groupName} voice room${enableMicrophone ? '' : ' (listening only)'}`,
-          });
-        }
+      toast({
+        title: "Voice Room Connected",
+        description: `Connected to ${groupName} voice room${enableMicrophone ? '' : ' (listening only)'}`,
       });
 
     } catch (error) {
@@ -369,23 +188,18 @@ export const VoiceRoomProvider: React.FC<VoiceRoomProviderProps> = ({ children }
         });
       }
     }
-  }, [user, state.isConnecting, state.isConnected, handleVoiceMessage, handlePresenceSync, debouncedPresenceUpdate, toast]);
+  }, [user, state.isConnecting, state.isConnected, trackActivity, trackKarmaActivity, toast]);
 
   const leaveVoiceRoom = useCallback(async () => {
     try {
-      // Cleanup OpenAI connection
+      // Cleanup WebRTC connection
       if (voiceChatRef.current) {
-        voiceChatRef.current.disconnect();
+        await voiceChatRef.current.disconnect();
         voiceChatRef.current = null;
       }
 
-      // Cleanup Supabase channel
-      if (channelRef.current) {
-        await supabase.removeChannel(channelRef.current);
-        channelRef.current = null;
-      }
-
       currentGroupId.current = null;
+      currentGroupName.current = null;
 
       setState(prev => ({
         ...prev,
@@ -403,70 +217,36 @@ export const VoiceRoomProvider: React.FC<VoiceRoomProviderProps> = ({ children }
       });
 
     } catch (error) {
-      // Silent error handling for production
+      console.error('Error leaving voice room:', error);
+      toast({
+        title: "Error",
+        description: "Failed to leave voice room properly",
+        variant: "destructive",
+      });
     }
   }, [toast]);
 
-  // Audio controls with ref-based presence updates
+  // Audio controls using WebRTC
   const toggleMute = useCallback(() => {
-    if (!user || !channelRef.current) return;
-
-    const newMutedState = !state.isMuted;
-    setState(prev => ({ ...prev, isMuted: newMutedState }));
-
-    // Store latest data in ref instead of passing directly
-    latestPresenceDataRef.current = {
-      userId: user.id,
-      name: user.email?.split('@')[0] || 'User',
-      isMuted: newMutedState,
-      isDeafened: state.isDeafened,
-      isSpeaking: state.isSpeaking,
-      handRaised: state.handRaised,
-      joinedAt: new Date().toISOString()
-    };
-    
-    debouncedPresenceUpdate();
-  }, [user, state.isMuted, state.isDeafened, debouncedPresenceUpdate]);
+    if (voiceChatRef.current) {
+      voiceChatRef.current.toggleMute();
+      setState(prev => ({ ...prev, isMuted: !prev.isMuted }));
+    }
+  }, []);
 
   const toggleDeafen = useCallback(() => {
-    if (!user || !channelRef.current) return;
-
-    const newDeafenedState = !state.isDeafened;
-    setState(prev => ({ ...prev, isDeafened: newDeafenedState }));
-
-    // Store latest data in ref instead of passing directly
-    latestPresenceDataRef.current = {
-      userId: user.id,
-      name: user.email?.split('@')[0] || 'User',
-      isMuted: state.isMuted,
-      isDeafened: newDeafenedState,
-      isSpeaking: state.isSpeaking,
-      handRaised: state.handRaised,
-      joinedAt: new Date().toISOString()
-    };
-    
-    debouncedPresenceUpdate();
-  }, [user, state.isMuted, state.isDeafened, state.isSpeaking, state.handRaised, debouncedPresenceUpdate]);
+    if (voiceChatRef.current) {
+      voiceChatRef.current.toggleDeafen();
+      setState(prev => ({ ...prev, isDeafened: !prev.isDeafened }));
+    }
+  }, []);
 
   const toggleHandRaise = useCallback(() => {
-    if (!user || !channelRef.current) return;
-
-    const newHandRaisedState = !state.handRaised;
-    setState(prev => ({ ...prev, handRaised: newHandRaisedState }));
-
-    // Store latest data in ref instead of passing directly
-    latestPresenceDataRef.current = {
-      userId: user.id,
-      name: user.email?.split('@')[0] || 'User',
-      isMuted: state.isMuted,
-      isDeafened: state.isDeafened,
-      isSpeaking: state.isSpeaking,
-      handRaised: newHandRaisedState,
-      joinedAt: new Date().toISOString()
-    };
-    
-    debouncedPresenceUpdate();
-  }, [user, state.isMuted, state.isDeafened, state.isSpeaking, state.handRaised, debouncedPresenceUpdate]);
+    if (voiceChatRef.current) {
+      voiceChatRef.current.toggleHandRaise();
+      setState(prev => ({ ...prev, handRaised: !prev.handRaised }));
+    }
+  }, []);
 
   // UI controls
   const toggleCollapse = useCallback(() => {
@@ -477,92 +257,16 @@ export const VoiceRoomProvider: React.FC<VoiceRoomProviderProps> = ({ children }
     setState(prev => ({ ...prev, isMinimized: !prev.isMinimized }));
   }, []);
 
-  // State getters
-  const getConnectionStatus = useCallback(() => ({
-    isConnected: state.isConnected,
-    participantCount: state.participantCount
-  }), [state.isConnected, state.participantCount]);
-
-  // ✅ SAFE - Cleanup refs pattern prevents infinite loops
-  useEffect(() => {
-    // Add cleanup functions to tracking
-    addCleanup(() => {
-      if (voiceChatRef.current) {
-        voiceChatRef.current.disconnect();
-        voiceChatRef.current = null;
-      }
-    });
-
-    addCleanup(async () => {
-      if (channelRef.current) {
-        await supabase.removeChannel(channelRef.current);
-        channelRef.current = null;
-      }
-    });
-
-    addCleanup(() => {
-      currentGroupId.current = null;
-      presenceUpdateInProgress.current = false;
-      latestPresenceDataRef.current = null;
-    });
-
-    addCleanup(() => {
-      // Reset state without triggering re-renders
-      setState({
-        isConnected: false,
-        isConnecting: false,
-        participants: [],
-        participantCount: 0,
-        isMuted: false,
-        isDeafened: false,
-        isSpeaking: false,
-        messages: [],
-        currentTranscript: '',
-        isCollapsed: true,
-        isMinimized: false,
-      });
-    });
-
-    // Add comprehensive cleanup for all resources
-    addCleanup(() => {
-      // Close all WebSocket connections
-      if (typeof window !== 'undefined' && (window as any).WebSocketPool) {
-        try {
-          (window as any).WebSocketPool.closeAllConnections();
-        } catch (e) {
-          // Silent error handling for production
-        }
-      }
-      
-      // Force close AudioContext if needed
-      try {
-        audioContextManager.forceClose();
-      } catch (e) {
-          // Silent error handling for production
-      }
-    });
-
-    return () => {
-      if (isCleaningUp.current) return; // Prevent multiple cleanup calls
-      isCleaningUp.current = true;
-
-      // Execute all cleanup functions without triggering re-renders
-      cleanupFunctions.current.forEach(fn => {
-        try { 
-          fn(); 
-        } catch (e) { 
-          // Silent error handling for production
-        }
-      });
-      
-      // Clear cleanup tracking
-      cleanupFunctions.current = [];
-      isCleaningUp.current = false;
+  // Utility functions
+  const getConnectionStatus = useCallback(() => {
+    return {
+      isConnected: state.isConnected,
+      participantCount: state.participantCount,
     };
-  }, []); // ✅ No dependencies - prevents infinite loop
+  }, [state.isConnected, state.participantCount]);
 
-  // Memoize context value to prevent unnecessary re-renders
-  const contextValue = useMemo<VoiceRoomContextType>(() => ({
+  // Context value
+  const value = useMemo(() => ({
     ...state,
     joinVoiceRoom,
     leaveVoiceRoom,
@@ -585,8 +289,17 @@ export const VoiceRoomProvider: React.FC<VoiceRoomProviderProps> = ({ children }
   ]);
 
   return (
-    <VoiceRoomContext.Provider value={contextValue}>
+    <VoiceRoomContext.Provider value={value}>
       {children}
     </VoiceRoomContext.Provider>
   );
+};
+
+// Hook to use voice room context
+export const useVoiceRoom = (): VoiceRoomContextType => {
+  const context = useContext(VoiceRoomContext);
+  if (context === undefined) {
+    throw new Error('useVoiceRoom must be used within a VoiceRoomProvider');
+  }
+  return context;
 };

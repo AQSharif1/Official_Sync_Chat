@@ -14,9 +14,17 @@ export default defineConfig({
   build: {
     rollupOptions: {
       external: [],
+      output: {
+        // Ensure consistent asset naming
+        assetFileNames: 'assets/[name]-[hash][extname]',
+        chunkFileNames: 'assets/[name]-[hash].js',
+        entryFileNames: 'assets/[name]-[hash].js'
+      }
     },
     // Ensure proper chunking and asset handling
     assetsDir: 'assets',
     sourcemap: false,
+    // Clear cache on build
+    emptyOutDir: true,
   },
 })
